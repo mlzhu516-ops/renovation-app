@@ -1,5 +1,7 @@
 // BudgetSummary - 预算汇总组件
 // 显示总预算、已支出、剩余金额、进度条
+import { formatMoney } from '../utils/formatters';
+
 export default function BudgetSummary({ budget, expenses, onEditBudget }) {
   // 计算已支出总额
   const totalSpent = expenses.reduce((sum, item) => sum + item.amount, 0);
@@ -14,11 +16,6 @@ export default function BudgetSummary({ budget, expenses, onEditBudget }) {
     if (percentage >= 70) return 'bg-orange-500';
     if (percentage >= 50) return 'bg-yellow-500';
     return 'bg-green-500';
-  };
-
-  // 格式化金额
-  const formatMoney = (num) => {
-    return num.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' });
   };
 
   return (

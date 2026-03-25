@@ -3,62 +3,77 @@ import CategoryList from './components/CategoryList';
 import ProblemList from './components/ProblemList';
 import ProblemForm from './components/ProblemForm';
 import BottomNav from './components/BottomNav';
+import BudgetPage from './components/BudgetPage';
+import SchedulePage from './components/SchedulePage';
 
-// App 主组件 - 装修助手施工工艺模块
+// App 主组件 - 装修助手
 export default function App() {
-  // 页面状态：'category' 分类列表 | 'problem' 问题列表 | 'form' 表单
-  const [view, setView] = useState('category');
-  const [currentCategory, setCurrentCategory] = useState(null);
-  const [currentProblem, setCurrentProblem] = useState(null);
+  // 当前活动模块：'technology' | 'budget' | 'schedule'
   const [activeTab, setActiveTab] = useState('technology');
 
-  // 点击分类 - 进入问题列表
+  // 施工工艺模块状态
+  const [techView, setTechView] = useState('category');
+  const [currentCategory, setCurrentCategory] = useState(null);
+  const [currentProblem, setCurrentProblem] = useState(null);
+
+  // 施工工艺 - 点击分类
   function handleSelectCategory(category) {
     setCurrentCategory(category);
-    setView('problem');
+    setTechView('problem');
   }
 
-  // 返回分类列表
+  // 施工工艺 - 返回分类列表
   function handleBackToCategory() {
-    setView('category');
+    setTechView('category');
     setCurrentCategory(null);
     setCurrentProblem(null);
   }
 
-  // 返回问题列表
+  // 施工工艺 - 返回问题列表
   function handleBackToProblem() {
-    setView('problem');
+    setTechView('problem');
     setCurrentProblem(null);
   }
 
-  // 新增问题
+  // 施工工艺 - 新增问题
   function handleAdd(category) {
     setCurrentCategory(category);
     setCurrentProblem(null);
-    setView('form');
+    setTechView('form');
   }
 
-  // 编辑问题
+  // 施工工艺 - 编辑问题
   function handleEdit(category, problem) {
     setCurrentCategory(category);
     setCurrentProblem(problem);
-    setView('form');
+    setTechView('form');
   }
 
-  // 保存成功后返回问题列表
+  // 施工工艺 - 保存成功
   function handleSaved() {
-    setView('problem');
+    setTechView('problem');
     setCurrentProblem(null);
   }
 
   // 底部导航切换
   function handleTabChange(tabId) {
-    // 目前只做施工工艺，其他模块预留
     if (tabId === 'technology') {
       setActiveTab(tabId);
-    } else {
-      alert('该模块正在开发中...');
+    } else if (tabId === 'budget') {
+      setActiveTab(tabId);
+    } else if (tabId === 'schedule') {
+      setActiveTab(tabId);
     }
+  }
+
+  // 预算模块返回
+  function handleBackFromBudget() {
+    setActiveTab('technology');
+  }
+
+  // 进度模块返回
+  function handleBackFromSchedule() {
+    setActiveTab('technology');
   }
 
   return (
@@ -66,27 +81,41 @@ export default function App() {
       {/* 状态栏占位 - iPhone刘海屏适配 */}
       <div className="h-8 bg-white"></div>
 
-      {/* 主体内容 */}
-      {view === 'category' && (
-        <CategoryList onSelectCategory={handleSelectCategory} />
+      {/* 施工工艺模块 */}
+      {activeTab === 'technology' && (
+        <>
+          {techView === 'category' && (
+            <CategoryList onSelectCategory={handleSelectCategory} />
+          )}
+
+          {techView === 'problem' && currentCategory && (
+            <ProblemList
+              category={currentCategory}
+              onBack={handleBackToCategory}
+              onAdd={handleAdd}
+              onEdit={handleEdit}
+            />
+          )}
+
+          {techView === 'form' && currentCategory && (
+            <ProblemForm
+              category={currentCategory}
+              problem={currentProblem}
+              onBack={handleBackToProblem}
+              onSaved={handleSaved}
+            />
+          )}
+        </>
       )}
 
-      {view === 'problem' && currentCategory && (
-        <ProblemList
-          category={currentCategory}
-          onBack={handleBackToCategory}
-          onAdd={handleAdd}
-          onEdit={handleEdit}
-        />
+      {/* 预算支出模块 */}
+      {activeTab === 'budget' && (
+        <BudgetPage onBack={handleBackFromBudget} />
       )}
 
-      {view === 'form' && currentCategory && (
-        <ProblemForm
-          category={currentCategory}
-          problem={currentProblem}
-          onBack={handleBackToProblem}
-          onSaved={handleSaved}
-        />
+      {/* 进度计划模块 */}
+      {activeTab === 'schedule' && (
+        <SchedulePage onBack={handleBackFromSchedule} />
       )}
 
       {/* 底部导航栏 */}

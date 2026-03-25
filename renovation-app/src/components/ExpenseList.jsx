@@ -1,22 +1,14 @@
 // ExpenseList - 支出列表组件
 // 显示支出记录卡片列表，支持编辑、删除
+import { EmptyState, FixedBottomButton } from './PageHeader';
+import { formatMoney, formatDateShort } from '../utils/formatters';
+
 export default function ExpenseList({ expenses, onEdit, onDelete, onAdd }) {
   // 分类颜色映射
   const categoryColors = {
     '材料': 'bg-blue-100 text-blue-600',
     '人工': 'bg-orange-100 text-orange-600',
     '其他': 'bg-gray-100 text-gray-600',
-  };
-
-  // 格式化金额
-  const formatMoney = (num) => {
-    return num.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' });
-  };
-
-  // 格式化日期
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return `${date.getMonth() + 1}月${date.getDate()}日`;
   };
 
   // 按日期倒序排列
@@ -28,10 +20,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete, onAdd }) {
     <div className="p-4 pt-0 pb-20">
       {/* 支出列表 */}
       {sortedExpenses.length === 0 ? (
-        <div className="text-center py-12 text-gray-400">
-          <p className="text-lg">暂无支出记录</p>
-          <p className="text-sm mt-2">点击下方按钮添加第一笔支出</p>
-        </div>
+        <EmptyState message="暂无支出记录" hint="点击下方按钮添加第一笔支出" />
       ) : (
         <div className="space-y-3">
           {sortedExpenses.map((expense) => (
@@ -53,7 +42,7 @@ export default function ExpenseList({ expenses, onEdit, onDelete, onAdd }) {
                   </span>
                   {/* 日期 */}
                   <p className="text-gray-400 text-sm">
-                    {formatDate(expense.date)}
+                    {formatDateShort(expense.date)}
                   </p>
                 </div>
                 {/* 金额 */}
@@ -83,12 +72,9 @@ export default function ExpenseList({ expenses, onEdit, onDelete, onAdd }) {
       )}
 
       {/* 新增按钮 */}
-      <button
-        onClick={onAdd}
-        className="fixed bottom-20 left-4 right-4 bg-green-500 text-white py-4 rounded-xl font-medium text-lg shadow-lg active:bg-green-600"
-      >
+      <FixedBottomButton onClick={onAdd} color="green">
         + 新增支出
-      </button>
+      </FixedBottomButton>
     </div>
   );
 }
