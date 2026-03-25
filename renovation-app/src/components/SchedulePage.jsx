@@ -140,23 +140,20 @@ export default function SchedulePage({ onBack }) {
       {/* 顶部状态栏占位 */}
       <div className="h-8 bg-white"></div>
 
-      {/* 顶部导航 */}
+      {/* 顶部标题 - 与施工工艺一致，居中显示 */}
       <div className="flex items-center p-4 bg-white border-b border-gray-100">
-        <button
-          onClick={onBack}
-          className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl"
-        >
-          <span className="text-xl">‹</span>
-        </button>
-        <h1 className="flex-1 text-xl font-bold text-gray-800 text-center pr-10">
+        <div className="flex-1"></div>
+        <h1 className="text-2xl font-bold text-gray-800">
           进度计划
         </h1>
-        <button
-          onClick={() => setView(view === 'phaseList' ? 'calendar' : 'phaseList')}
-          className="text-blue-500 text-sm font-medium"
-        >
-          {view === 'phaseList' ? '日历' : '阶段'}
-        </button>
+        <div className="flex-1 flex justify-end">
+          <button
+            onClick={() => setView(view === 'phaseList' ? 'calendar' : 'phaseList')}
+            className="text-blue-500 text-sm font-medium"
+          >
+            {view === 'phaseList' ? '日历' : '阶段'}
+          </button>
+        </div>
       </div>
 
       {/* 日历视图 */}

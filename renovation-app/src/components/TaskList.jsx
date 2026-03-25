@@ -14,9 +14,9 @@ export default function TaskList({ dateStr, tasks, onEdit, onDelete, onAdd, onCl
         >
           <span className="text-xl">‹</span>
         </button>
-        <div className="flex-1 text-center">
-          <h1 className="text-lg font-bold text-gray-800">{dateStr}</h1>
-          <p className="text-sm text-gray-400">{tasks.length}个任务</p>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold text-gray-800 text-center">{dateStr}</h1>
+          <p className="text-sm text-gray-400 text-center">{tasks.length}个任务</p>
         </div>
         <button
           onClick={onAdd}

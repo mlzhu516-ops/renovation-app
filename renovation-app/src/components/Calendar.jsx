@@ -56,11 +56,10 @@ export default function Calendar({
     return tasks[dateStr]?.length || 0;
   }
 
-  // ========== 拖动/点击处理 ==========
+  // ========== 拖动/点击处理（支持鼠标和触摸） ==========
 
   function handleMouseDown(dateStr) {
     if (isResizing) return;
-    setClickStart(dateStr);
     setIsDragging(true);
     setDragStart(dateStr);
     setDragEnd(dateStr);
@@ -81,6 +80,11 @@ export default function Calendar({
   }
 
   function handleMouseUp() {
+    handleDragEnd();
+  }
+
+  // 统一处理拖动结束逻辑
+  function handleDragEnd() {
     // 处理阶段调整
     if (isResizing && resizeTarget && resizePreview) {
       const phase = phases.find(p => p.id === resizeTarget.phaseId);
@@ -108,10 +112,8 @@ export default function Calendar({
       const days = (new Date(end) - new Date(start)) / (1000 * 60 * 60 * 24) + 1;
 
       if (days > 1) {
-        // 拖动选择了多天 → 创建阶段
         onSelectRange(start, end);
       } else {
-        // 仅点击一天 → 打开任务
         onSelectDate(start);
       }
     }
@@ -119,7 +121,41 @@ export default function Calendar({
     setIsDragging(false);
     setDragStart(null);
     setDragEnd(null);
-    setClickStart(null);
+  }
+
+  // ========== 触摸事件处理 ==========
+  function handleTouchStart(e, dateStr) {
+    e.preventDefault(); // 防止滚动
+    if (isResizing) return;
+    setIsDragging(true);
+    setDragStart(dateStr);
+    setDragEnd(dateStr);
+  }
+
+  function handleTouchMove(e) {
+    if (!isDragging || !dragStart) return;
+    e.preventDefault();
+
+    // 获取触摸位置
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    // 找到对应的日期格子
+    const dayCell = element?.closest('[data-date]');
+    if (dayCell) {
+      const dateStr = dayCell.getAttribute('data-date');
+      if (dateStr) {
+        const start = dragStart <= dateStr ? dragStart : dateStr;
+        const end = dragStart <= dateStr ? dateStr : dragStart;
+        setDragStart(start);
+        setDragEnd(end);
+      }
+    }
+  }
+
+  function handleTouchEnd(e) {
+    e.preventDefault();
+    handleDragEnd();
   }
 
   function handleMouseLeave() {
@@ -127,7 +163,6 @@ export default function Calendar({
       setIsDragging(false);
       setDragStart(null);
       setDragEnd(null);
-      setClickStart(null);
     }
   }
 
@@ -181,10 +216,12 @@ export default function Calendar({
       <div
         key={day}
         ref={calendarRef}
+        data-date={dateStr}
         onMouseDown={() => handleMouseDown(dateStr)}
         onMouseMove={(e) => handleMouseMove(e, dateStr)}
         onMouseUp={handleMouseUp}
         onMouseEnter={() => isDragging && handleMouseMove(null, dateStr)}
+        onTouchStart={(e) => handleTouchStart(e, dateStr)}
         className={`
           h-16 border border-gray-100 relative cursor-pointer select-none
           transition-colors duration-75
@@ -270,11 +307,13 @@ export default function Calendar({
         ))}
       </div>
 
-      {/* 日历格子 */}
+      {/* 日历格子 - 添加触摸事件 */}
       <div
         className="grid grid-cols-7"
         onMouseLeave={handleMouseLeave}
         onMouseUp={handleMouseUp}
+        onTouchMove={handleTouchMove}
+        onTouchEnd={handleTouchEnd}
       >
         {days}
       </div>

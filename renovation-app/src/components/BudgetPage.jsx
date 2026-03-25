@@ -69,15 +69,9 @@ export default function BudgetPage({ onBack }) {
       {/* 顶部状态栏占位 */}
       <div className="h-8 bg-white"></div>
 
-      {/* 顶部导航 */}
-      <div className="flex items-center p-4 bg-white border-b border-gray-100">
-        <button
-          onClick={onBack}
-          className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl"
-        >
-          <span className="text-xl">‹</span>
-        </button>
-        <h1 className="flex-1 text-xl font-bold text-gray-800 text-center pr-10">
+      {/* 顶部标题 - 与施工工艺一致，居中显示 */}
+      <div className="p-4 bg-white border-b border-gray-100">
+        <h1 className="text-2xl font-bold text-gray-800 text-center">
           预算支出
         </h1>
       </div>
