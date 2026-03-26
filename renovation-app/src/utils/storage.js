@@ -66,7 +66,7 @@ export function deleteProblem(categoryId, problemId) {
   return false;
 }
 
-// ========== 预算支出模块 ==========
+// ========== 预算支出模块（分类+多笔支出结构）==========
 
 // 获取预算数据
 export function getBudgetData() {
@@ -75,11 +75,11 @@ export function getBudgetData() {
     if (data) {
       return JSON.parse(data);
     }
-    // 默认值
-    return { budget: 0, expenses: [] };
+    // 默认值：支持旧数据结构迁移
+    return { budget: 0, categories: [] };
   } catch (error) {
     console.error('读取预算数据失败:', error);
-    return { budget: 0, expenses: [] };
+    return { budget: 0, categories: [] };
   }
 }
 
@@ -101,36 +101,105 @@ export function setBudget(amount) {
   return saveBudgetData(data);
 }
 
-// 添加或更新支出
-export function saveExpense(expense) {
+// ========== 分类操作 ==========
+
+// 添加或更新分类
+export function saveCategory(category) {
   const data = getBudgetData();
-  if (!data.expenses) {
-    data.expenses = [];
+  if (!data.categories) {
+    data.categories = [];
   }
 
-  if (expense.id) {
-    // 编辑
-    const index = data.expenses.findIndex(e => e.id === expense.id);
+  if (category.id) {
+    // 编辑分类
+    const index = data.categories.findIndex(c => c.id === category.id);
     if (index !== -1) {
-      data.expenses[index] = expense;
+      data.categories[index] = category;
     }
   } else {
-    // 新增
-    expense.id = Date.now().toString();
-    data.expenses.push(expense);
+    // 新增分类
+    category.id = Date.now().toString();
+    category.items = [];
+    data.categories.push(category);
   }
 
   return saveBudgetData(data);
 }
 
-// 删除支出
-export function deleteExpense(expenseId) {
+// 删除分类（同时删除分类下所有支出）
+export function deleteCategory(categoryId) {
   const data = getBudgetData();
-  if (data.expenses) {
-    data.expenses = data.expenses.filter(e => e.id !== expenseId);
+  if (data.categories) {
+    data.categories = data.categories.filter(c => c.id !== categoryId);
     return saveBudgetData(data);
   }
   return false;
+}
+
+// ========== 支出条目操作 ==========
+
+// 添加或更新支出条目
+export function saveExpenseItem(categoryId, item) {
+  const data = getBudgetData();
+  const category = data.categories?.find(c => c.id === categoryId);
+
+  if (!category) return false;
+
+  if (!category.items) {
+    category.items = [];
+  }
+
+  if (item.id) {
+    // 编辑条目
+    const index = category.items.findIndex(i => i.id === item.id);
+    if (index !== -1) {
+      category.items[index] = item;
+    }
+  } else {
+    // 新增条目
+    item.id = Date.now().toString();
+    category.items.push(item);
+  }
+
+  return saveBudgetData(data);
+}
+
+// 删除支出条目
+export function deleteExpenseItem(categoryId, itemId) {
+  const data = getBudgetData();
+  const category = data.categories?.find(c => c.id === categoryId);
+
+  if (!category || !category.items) return false;
+
+  category.items = category.items.filter(i => i.id !== itemId);
+  return saveBudgetData(data);
+}
+
+// ========== 计算函数 ==========
+
+// 计算某个分类的总金额
+export function calculateCategoryTotal(categoryId) {
+  const data = getBudgetData();
+  const category = data.categories?.find(c => c.id === categoryId);
+  if (!category?.items) return 0;
+  return category.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+}
+
+// 计算总支出金额
+export function calculateTotalExpense() {
+  const data = getBudgetData();
+  if (!data.categories) return 0;
+  return data.categories.reduce((total, cat) => {
+    return total + (cat.items?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0);
+  }, 0);
+}
+
+// 计算分类占比（百分比）
+export function calculateCategoryPercent(categoryId) {
+  const total = calculateTotalExpense();
+  if (total === 0) return 0;
+  const categoryTotal = calculateCategoryTotal(categoryId);
+  return ((categoryTotal / total) * 100).toFixed(1);
 }
 
 // ========== 进度计划模块 ==========

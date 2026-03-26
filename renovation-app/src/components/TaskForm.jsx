@@ -1,8 +1,9 @@
-// TaskForm - 每日任务表单（增强版）
-// 支持分类选择（8大施工类别）
+// TaskForm - 每日任务表单
 import { useState } from 'react';
-import { PHASE_CATEGORIES, getPhaseColor } from '../utils/storage';
-import { getTodayStr } from '../utils/formatters';
+import { PHASE_CATEGORIES } from '../utils/storage';
+import Input, { TextArea } from './Input';
+import Button from './Button';
+import Card from './Card';
 
 export default function TaskForm({ task, dateStr, onBack, onSave }) {
   const isEdit = !!task;
@@ -10,16 +11,14 @@ export default function TaskForm({ task, dateStr, onBack, onSave }) {
   const [formData, setFormData] = useState({
     title: task?.title || '',
     description: task?.description || '',
-    category: task?.category || 'electrical', // 默认水电
+    category: task?.category || 'electrical',
   });
 
-  // 处理输入变化
   function handleChange(e) {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   }
 
-  // 提交表单
   function handleSubmit(e) {
     e.preventDefault();
 
@@ -40,60 +39,60 @@ export default function TaskForm({ task, dateStr, onBack, onSave }) {
   }
 
   return (
-    <div className="p-4 pb-20">
+    <div className="px-4 pt-2 pb-24">
       {/* 顶部导航 */}
-      <div className="flex items-center mb-4">
+      <div className="flex items-center mb-6">
         <button
           type="button"
           onClick={onBack}
-          className="w-10 h-10 flex items-center justify-center bg-white rounded-xl shadow-sm"
+          className="w-10 h-10 flex items-center justify-center rounded-xl bg-gray-100 active:bg-gray-200 transition-colors"
         >
-          <span className="text-xl">‹</span>
+          <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+          </svg>
         </button>
-        <h1 className="flex-1 text-xl font-bold text-gray-800 text-center pr-10">
+        <h1 className="flex-1 text-xl font-bold text-gray-900 text-center pr-10">
           {isEdit ? '编辑任务' : '新增任务'}
         </h1>
       </div>
 
       {/* 日期显示 */}
-      <div className="bg-blue-50 rounded-xl p-3 mb-4 text-center">
-        <span className="text-blue-600 font-medium">{dateStr}</span>
-      </div>
+      <Card className="mb-5 text-center animate-fadeIn">
+        <div className="flex items-center justify-center gap-2">
+          <svg className="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+          </svg>
+          <span className="text-sm text-gray-600 font-medium">{dateStr}</span>
+        </div>
+      </Card>
 
       {/* 表单 */}
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         {/* 任务标题 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-600 mb-2">
-            任务标题
-          </label>
-          <input
-            type="text"
+        <div className="animate-slideUp">
+          <Input
+            label="任务标题"
             name="title"
             value={formData.title}
             onChange={handleChange}
             placeholder="如：水电验收"
-            className="w-full p-4 bg-white rounded-xl border border-gray-200 text-lg"
           />
         </div>
 
         {/* 描述 */}
-        <div>
-          <label className="block text-sm font-medium text-gray-600 mb-2">
-            描述（选填）
-          </label>
-          <textarea
+        <div className="animate-slideUp" style={{ animationDelay: '50ms' }}>
+          <TextArea
+            label="描述（选填）"
             name="description"
             value={formData.description}
             onChange={handleChange}
             placeholder="请输入任务描述"
             rows={3}
-            className="w-full p-4 bg-white rounded-xl border border-gray-200 text-lg resize-none"
           />
         </div>
 
         {/* 分类选择 */}
-        <div>
+        <div className="animate-slideUp" style={{ animationDelay: '100ms' }}>
           <label className="block text-sm font-medium text-gray-600 mb-2">
             分类
           </label>
@@ -104,10 +103,10 @@ export default function TaskForm({ task, dateStr, onBack, onSave }) {
                 type="button"
                 onClick={() => setFormData(prev => ({ ...prev, category: cat.id }))}
                 className={`
-                  py-2 px-1 rounded-lg text-xs font-medium transition-all
+                  py-2 px-1 rounded-xl text-xs font-medium transition-all
                   ${formData.category === cat.id
-                    ? `${cat.color} text-white scale-105`
-                    : 'bg-gray-100 text-gray-600'
+                    ? `${cat.color} text-white shadow-sm`
+                    : 'bg-gray-100 text-gray-600 active:bg-gray-200'
                   }
                 `}
               >
@@ -118,12 +117,11 @@ export default function TaskForm({ task, dateStr, onBack, onSave }) {
         </div>
 
         {/* 提交按钮 */}
-        <button
-          type="submit"
-          className="fixed bottom-20 left-4 right-4 bg-blue-500 text-white py-4 rounded-xl font-medium text-lg shadow-lg active:bg-blue-600"
-        >
-          保存
-        </button>
+        <div className="fixed bottom-20 left-4 right-4 z-40 pt-2">
+          <Button type="submit" className="w-full shadow-lg" size="large">
+            保存
+          </Button>
+        </div>
       </form>
     </div>
   );

@@ -1,32 +1,24 @@
-// SchedulePage - 进度计划模块（增强版）
-// 整合日历、阶段管理、每日任务
+// SchedulePage - 进度计划模块
 import { useState, useEffect } from 'react';
 import Calendar from './Calendar';
 import PhaseList from './PhaseList';
-import PhaseSelector from './PhaseSelector';
+import PhaseForm from './PhaseForm';
 import TaskList from './TaskList';
 import TaskForm from './TaskForm';
 import {
   getScheduleData,
   savePhase,
   deletePhase,
-  getAllTasks,
   saveDailyTask,
   deleteDailyTask,
-  PHASE_CATEGORIES,
-  getCategoryName,
-  calculatePhaseDays,
 } from '../utils/storage';
 
 export default function SchedulePage({ onBack }) {
-  // 视图状态：calendar / phaseList / task
+  // 视图状态：calendar / phaseList / phaseForm / task / taskForm
   const [view, setView] = useState('calendar');
   const [phases, setPhases] = useState([]);
   const [tasks, setTasks] = useState({});
-
-  // 阶段选择弹窗
-  const [showPhaseSelector, setShowPhaseSelector] = useState(false);
-  const [selectedRange, setSelectedRange] = useState({ start: null, end: null });
+  const [editingPhase, setEditingPhase] = useState(null);
 
   // 任务相关
   const [selectedDate, setSelectedDate] = useState(null);
@@ -45,76 +37,64 @@ export default function SchedulePage({ onBack }) {
 
   // ========== 阶段操作 ==========
 
-  // 拖动选择日期范围
-  function handleSelectRange(start, end) {
-    setSelectedRange({ start, end });
-    setShowPhaseSelector(true);
+  function handleAddPhase() {
+    setEditingPhase(null);
+    setView('phaseForm');
   }
 
-  // 确认创建阶段
-  function handleConfirmPhase(phaseData) {
+  function handleEditPhase(phase) {
+    setEditingPhase(phase);
+    setView('phaseForm');
+  }
+
+  function handleSavePhase(phaseData) {
     savePhase(phaseData);
     loadData();
-    setShowPhaseSelector(false);
-    setSelectedRange({ start: null, end: null });
+    setView('phaseList');
+    setEditingPhase(null);
   }
 
-  // 取消创建阶段
-  function handleCancelPhase() {
-    setShowPhaseSelector(false);
-    setSelectedRange({ start: null, end: null });
-  }
-
-  // 删除阶段
   function handleDeletePhase(phaseId) {
-    deletePhase(phaseId);
-    loadData();
-  }
-
-  // 编辑阶段（暂用简单编辑：删除后重新创建）
-  function handleEditPhase(phase) {
-    if (confirm('将删除此阶段，是否继续？')) {
-      deletePhase(phase.id);
-      setSelectedRange({ start: phase.startDate, end: phase.endDate });
-      setShowPhaseSelector(true);
+    if (confirm('确定删除这个阶段吗？')) {
+      deletePhase(phaseId);
+      loadData();
+      setView('phaseList');
+      setEditingPhase(null);
     }
   }
 
-  // 调整阶段工期（拖动边界）
-  function handleUpdatePhase(updatedPhase) {
-    savePhase(updatedPhase);
-    loadData();
+  function handleDeleteFromForm(phaseId) {
+    handleDeletePhase(phaseId);
   }
 
   // ========== 任务操作 ==========
 
-  // 点击日期打开任务列表
   function handleSelectDate(dateStr) {
     setSelectedDate(dateStr);
     setView('task');
     setEditingTask(null);
   }
 
-  // 关闭任务列表
+  function handleSelectRange(start, end) {
+    alert(`已选择 ${start} 至 ${end}，请在阶段列表中创建`);
+  }
+
   function handleCloseTask() {
     setView('calendar');
     setSelectedDate(null);
     setEditingTask(null);
   }
 
-  // 新增任务
   function handleAddTask() {
     setEditingTask(null);
     setView('taskForm');
   }
 
-  // 编辑任务
   function handleEditTask(task) {
     setEditingTask(task);
     setView('taskForm');
   }
 
-  // 保存任务
   function handleSaveTask(taskData) {
     saveDailyTask(selectedDate, taskData);
     loadData();
@@ -122,7 +102,6 @@ export default function SchedulePage({ onBack }) {
     setEditingTask(null);
   }
 
-  // 删除任务
   function handleDeleteTask(taskId) {
     if (confirm('确定删除这个任务吗？')) {
       deleteDailyTask(selectedDate, taskId);
@@ -130,26 +109,23 @@ export default function SchedulePage({ onBack }) {
     }
   }
 
-  // ========== 视图切换 ==========
-  function handleBackToCalendar() {
-    setView('calendar');
+  function handleUpdatePhase(updatedPhase) {
+    savePhase(updatedPhase);
+    loadData();
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-16">
-      {/* 顶部状态栏占位 */}
-      <div className="h-8 bg-white"></div>
-
-      {/* 顶部标题 - 与施工工艺一致，居中显示 */}
-      <div className="flex items-center p-4 bg-white border-b border-gray-100">
-        <div className="flex-1"></div>
-        <h1 className="text-2xl font-bold text-gray-800">
-          进度计划
-        </h1>
-        <div className="flex-1 flex justify-end">
+    <div className="pb-20">
+      {/* 页面标题 */}
+      <div className="px-4 pt-2 pb-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">进度计划</h1>
+            <p className="text-sm text-gray-400 mt-1">规划你的装修进度</p>
+          </div>
           <button
             onClick={() => setView(view === 'phaseList' ? 'calendar' : 'phaseList')}
-            className="text-blue-500 text-sm font-medium"
+            className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-lg active:bg-gray-200 transition-colors"
           >
             {view === 'phaseList' ? '日历' : '阶段'}
           </button>
@@ -158,14 +134,8 @@ export default function SchedulePage({ onBack }) {
 
       {/* 日历视图 */}
       {view === 'calendar' && (
-        <div className="p-4">
-          <Calendar
-            phases={phases}
-            tasks={tasks}
-            onSelectDate={handleSelectDate}
-            onSelectRange={handleSelectRange}
-            onUpdatePhase={handleUpdatePhase}
-          />
+        <div className="px-4">
+          <Calendar phases={phases} tasks={tasks} onSelectDate={handleSelectDate} />
         </div>
       )}
 
@@ -175,7 +145,17 @@ export default function SchedulePage({ onBack }) {
           phases={phases}
           onEdit={handleEditPhase}
           onDelete={handleDeletePhase}
-          onAdd={() => setView('calendar')}
+          onAdd={handleAddPhase}
+        />
+      )}
+
+      {/* 阶段表单视图 */}
+      {view === 'phaseForm' && (
+        <PhaseForm
+          phase={editingPhase}
+          onBack={() => setView('phaseList')}
+          onSave={handleSavePhase}
+          onDelete={editingPhase ? () => handleDeleteFromForm(editingPhase.id) : null}
         />
       )}
 
@@ -198,16 +178,6 @@ export default function SchedulePage({ onBack }) {
           dateStr={selectedDate}
           onBack={() => setView('task')}
           onSave={handleSaveTask}
-        />
-      )}
-
-      {/* 阶段选择弹窗 */}
-      {showPhaseSelector && (
-        <PhaseSelector
-          startDate={selectedRange.start}
-          endDate={selectedRange.end}
-          onConfirm={handleConfirmPhase}
-          onCancel={handleCancelPhase}
         />
       )}
     </div>

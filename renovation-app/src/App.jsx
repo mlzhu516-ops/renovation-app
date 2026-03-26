@@ -3,7 +3,7 @@ import CategoryList from './components/CategoryList';
 import ProblemList from './components/ProblemList';
 import ProblemForm from './components/ProblemForm';
 import BottomNav from './components/BottomNav';
-import BudgetPage from './components/BudgetPage';
+import CategoryExpenseList from './components/CategoryExpenseList';
 import SchedulePage from './components/SchedulePage';
 
 // App 主组件 - 装修助手
@@ -57,30 +57,11 @@ export default function App() {
 
   // 底部导航切换
   function handleTabChange(tabId) {
-    if (tabId === 'technology') {
-      setActiveTab(tabId);
-    } else if (tabId === 'budget') {
-      setActiveTab(tabId);
-    } else if (tabId === 'schedule') {
-      setActiveTab(tabId);
-    }
-  }
-
-  // 预算模块返回
-  function handleBackFromBudget() {
-    setActiveTab('technology');
-  }
-
-  // 进度模块返回
-  function handleBackFromSchedule() {
-    setActiveTab('technology');
+    setActiveTab(tabId);
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 pb-16">
-      {/* 状态栏占位 - iPhone刘海屏适配 */}
-      <div className="h-8 bg-white"></div>
-
+    <div className="min-h-screen bg-gray-50">
       {/* 施工工艺模块 */}
       {activeTab === 'technology' && (
         <>
@@ -110,12 +91,12 @@ export default function App() {
 
       {/* 预算支出模块 */}
       {activeTab === 'budget' && (
-        <BudgetPage onBack={handleBackFromBudget} />
+        <CategoryExpenseList />
       )}
 
       {/* 进度计划模块 */}
       {activeTab === 'schedule' && (
-        <SchedulePage onBack={handleBackFromSchedule} />
+        <SchedulePage />
       )}
 
       {/* 底部导航栏 */}
