@@ -126,7 +126,7 @@ export default function PhaseForm({ phase, onBack, onSave, onDelete }) {
 
         {/* 操作按钮 */}
         <div className="space-y-3 pt-2">
-          <div className="fixed bottom-20 left-4 right-4 z-40">
+          <div className="fixed bottom-24 left-4 right-4 z-40">
             <Button type="submit" className="w-full shadow-lg" size="large">
               保存
             </Button>
@@ -136,7 +136,7 @@ export default function PhaseForm({ phase, onBack, onSave, onDelete }) {
             <button
               type="button"
               onClick={onDelete}
-              className="fixed bottom-36 left-4 right-4 z-40 bg-red-50 text-red-500 py-3 rounded-xl font-medium text-base active:bg-red-100 transition-colors"
+              className="fixed bottom-40 left-4 right-4 z-40 bg-red-50 text-red-500 py-3 rounded-xl font-medium text-base active:bg-red-100 transition-colors"
             >
               删除阶段
             </button>

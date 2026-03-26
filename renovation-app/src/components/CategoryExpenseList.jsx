@@ -236,7 +236,7 @@ export default function CategoryExpenseList({ onBack }) {
       </div>
 
       {/* 新增分类按钮 */}
-      <div className="fixed bottom-20 left-4 right-4 z-40">
+      <div className="fixed bottom-24 left-4 right-4 z-40">
         {showAddCategory ? (
           <Card className="shadow-xl">
             <div className="space-y-3">
