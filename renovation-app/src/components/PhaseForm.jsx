@@ -124,24 +124,23 @@ export default function PhaseForm({ phase, onBack, onSave, onDelete }) {
           </div>
         </Card>
 
-        {/* 操作按钮 */}
-        <div className="space-y-3 pt-2">
-          <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40">
-            <Button type="submit" className="w-full shadow-lg" size="large">
-              保存
-            </Button>
-          </div>
-
-          {isEdit && onDelete && (
-            <button
-              type="button"
-              onClick={onDelete}
-              className="fixed bottom-[calc(120px+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40 bg-red-50 text-red-500 py-3 rounded-xl font-medium text-base active:bg-red-100 transition-colors"
-            >
-              删除阶段
-            </button>
-          )}
-        </div>
+        {/* 操作按钮 - 删除在上，保存在下 */}
+        {isEdit && onDelete && (
+          <button
+            type="button"
+            onClick={() => {
+              if (confirm('确定删除这个阶段吗？')) {
+                onDelete();
+              }
+            }}
+            className="w-full bg-red-50 text-red-500 py-3 rounded-xl font-medium text-base active:bg-red-100 transition-colors"
+          >
+            删除阶段
+          </button>
+        )}
+        <Button type="submit" className="w-full shadow-lg" size="large">
+          保存
+        </Button>
       </form>
     </div>
   );

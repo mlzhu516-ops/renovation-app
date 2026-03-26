@@ -55,16 +55,17 @@ export default function SchedulePage({ onBack }) {
   }
 
   function handleDeletePhase(phaseId) {
-    if (confirm('确定删除这个阶段吗？')) {
-      deletePhase(phaseId);
-      loadData();
-      setView('phaseList');
-      setEditingPhase(null);
-    }
+    deletePhase(phaseId);
+    loadData();
+    setView('phaseList');
+    setEditingPhase(null);
   }
 
   function handleDeleteFromForm(phaseId) {
-    handleDeletePhase(phaseId);
+    deletePhase(phaseId);
+    loadData();
+    setView('phaseList');
+    setEditingPhase(null);
   }
 
   // ========== 任务操作 ==========
@@ -103,10 +104,8 @@ export default function SchedulePage({ onBack }) {
   }
 
   function handleDeleteTask(taskId) {
-    if (confirm('确定删除这个任务吗？')) {
-      deleteDailyTask(selectedDate, taskId);
-      loadData();
-    }
+    deleteDailyTask(selectedDate, taskId);
+    loadData();
   }
 
   function handleUpdatePhase(updatedPhase) {

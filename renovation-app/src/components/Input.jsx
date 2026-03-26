@@ -8,7 +8,8 @@ export default function Input({
   placeholder,
   label,
   error,
-  className = ''
+  className = '',
+  name
 }) {
   return (
     <div className={className}>
@@ -19,6 +20,7 @@ export default function Input({
       )}
       <input
         type={type}
+        name={name}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
@@ -45,7 +47,8 @@ export function TextArea({
   placeholder,
   label,
   rows = 3,
-  className = ''
+  className = '',
+  name
 }) {
   return (
     <div className={className}>
@@ -55,6 +58,7 @@ export function TextArea({
         </label>
       )}
       <textarea
+        name={name}
         value={value}
         onChange={onChange}
         placeholder={placeholder}
