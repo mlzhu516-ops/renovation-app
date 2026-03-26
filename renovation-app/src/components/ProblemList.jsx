@@ -120,7 +120,7 @@ export default function ProblemList({ category, onBack, onAdd, onEdit }) {
       )}
 
       {/* 新增按钮 - 固定在底部 */}
-      <div className="fixed bottom-24 left-4 right-4 z-40">
+      <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40">
         <Button
           onClick={() => onAdd(category)}
           className="w-full shadow-lg"

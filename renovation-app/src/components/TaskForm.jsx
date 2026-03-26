@@ -117,7 +117,7 @@ export default function TaskForm({ task, dateStr, onBack, onSave }) {
         </div>
 
         {/* 提交按钮 */}
-        <div className="fixed bottom-24 left-4 right-4 z-40 pt-2">
+        <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40 pt-2">
           <Button type="submit" className="w-full shadow-lg" size="large">
             保存
           </Button>

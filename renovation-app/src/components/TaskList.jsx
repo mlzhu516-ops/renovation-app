@@ -5,7 +5,7 @@ import Button from './Button';
 
 export default function TaskList({ dateStr, tasks, onEdit, onDelete, onAdd, onClose }) {
   return (
-    <div className="fixed inset-0 bg-gray-50 z-40 overflow-y-auto">
+    <div className="fixed inset-0 bg-gray-50 z-[60] overflow-y-auto pb-safe">
       {/* 顶部导航 */}
       <div className="flex items-center px-4 py-3 bg-white/80 backdrop-blur-xl border-b border-gray-100 sticky top-0 z-50">
         <button
@@ -28,7 +28,7 @@ export default function TaskList({ dateStr, tasks, onEdit, onDelete, onAdd, onCl
       </div>
 
       {/* 任务列表 */}
-      <div className="p-4 pb-8">
+      <div className="p-4 pb-[calc(100px+env(safe-area-inset-bottom,0px))]">
         {tasks.length === 0 ? (
           <div className="text-center py-16 animate-fadeIn">
             <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gray-100 flex items-center justify-center">

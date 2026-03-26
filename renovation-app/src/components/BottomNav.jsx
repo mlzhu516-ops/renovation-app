@@ -33,7 +33,7 @@ export default function BottomNav({ activeTab, onTabChange }) {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto bg-white/90 backdrop-blur-xl border-t border-gray-200/50 safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 max-w-md mx-auto h-16 bg-white/90 backdrop-blur-xl border-t border-gray-200/50 safe-area-bottom">
       {/* 顶部高光线条 */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-10 h-1 bg-gray-300 rounded-full opacity-50" />
 

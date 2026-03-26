@@ -76,7 +76,7 @@ export function FixedBottomButton({ children, onClick, color = 'blue' }) {
   return (
     <button
       onClick={onClick}
-      className={`fixed bottom-24 left-4 right-4 ${colors[color]} text-white py-4 rounded-xl font-medium text-lg shadow-lg`}
+      className={`fixed bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-4 right-4 ${colors[color]} text-white py-4 rounded-xl font-medium text-lg shadow-lg z-40`}
     >
       {children}
     </button>

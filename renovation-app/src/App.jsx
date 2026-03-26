@@ -61,7 +61,7 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-[calc(80px+env(safe-area-inset-bottom,0px))]">
+    <div className="min-h-screen bg-gray-50 pb-[calc(100px+env(safe-area-inset-bottom,0px))]">
       {/* 施工工艺模块 */}
       {activeTab === 'technology' && (
         <>
