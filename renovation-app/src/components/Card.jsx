@@ -16,7 +16,7 @@ export default function Card({
   `;
 
   return (
-    <div className={`${baseClasses} ${className}`}>
+    <div onClick={onClick} className={`${baseClasses} ${className}`}>
       {children}
     </div>
   );
