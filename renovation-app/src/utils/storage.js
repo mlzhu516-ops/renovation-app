@@ -199,7 +199,7 @@ export function calculateCategoryPercent(categoryId) {
   const total = calculateTotalExpense();
   if (total === 0) return 0;
   const categoryTotal = calculateCategoryTotal(categoryId);
-  return ((categoryTotal / total) * 100).toFixed(1);
+  return (categoryTotal / total) * 100;
 }
 
 // ========== 进度计划模块 ==========

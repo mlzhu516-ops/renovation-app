@@ -148,6 +148,11 @@ export default function CategoryExpenseList({ onBack }) {
             const catPercent = calculateCategoryPercent(category.id);
             const isExpanded = expandedCategory === category.id;
 
+            // 按日期排序（早的在前）
+            const sortedItems = category.items ? [...category.items].sort((a, b) =>
+              new Date(a.date) - new Date(b.date)
+            ) : [];
+
             return (
               <Card
                 key={category.id}
@@ -160,10 +165,17 @@ export default function CategoryExpenseList({ onBack }) {
                   onClick={() => setExpandedCategory(isExpanded ? null : category.id)}
                   className="p-4 cursor-pointer active:bg-gray-50 transition-colors"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-base font-medium text-gray-900">
-                      {category.name}
-                    </h3>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-medium text-gray-900">
+                        {category.name}
+                      </h3>
+                      {catPercent > 0 && (
+                        <span className="text-xs text-gray-400">
+                          {catPercent.toFixed(1)}%
+                        </span>
+                      )}
+                    </div>
                     <div className="flex items-center gap-2">
                       <span className="text-base font-bold text-gray-900">
                         {formatMoney(categoryTotal)}
@@ -176,57 +188,56 @@ export default function CategoryExpenseList({ onBack }) {
                       </svg>
                     </div>
                   </div>
-
-                  {/* 占比进度条 */}
-                  <Progress value={catPercent} color="blue" showLabel={false} />
-
-                  {/* 删除按钮 */}
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDeleteCategory(category.id);
-                    }}
-                    className="text-xs text-red-400 hover:text-red-500 mt-2 transition-colors"
-                  >
-                    删除分类
-                  </button>
                 </div>
 
                 {/* 展开的支出列表 */}
                 {isExpanded && (
-                  <div className="border-t border-gray-100 p-4 space-y-2 animate-slideUp">
-                    {category.items?.length === 0 ? (
-                      <p className="text-gray-400 text-sm text-center py-3">暂无支出</p>
-                    ) : (
-                      category.items.map((item) => (
-                        <div key={item.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-b-0">
-                          <div>
-                            <p className="text-sm text-gray-800">{item.title}</p>
-                            <p className="text-xs text-gray-400">{item.date}</p>
+                  <div className="border-t border-gray-100">
+                    <div className="p-4 space-y-2 animate-slideUp">
+                      {sortedItems.length === 0 ? (
+                        <p className="text-gray-400 text-sm text-center py-3">暂无支出</p>
+                      ) : (
+                        sortedItems.map((item) => (
+                          <div key={item.id} className="flex items-center justify-between py-2.5 border-b border-gray-50 last:border-b-0">
+                            <div>
+                              <p className="text-sm text-gray-800">{item.title}</p>
+                              <p className="text-xs text-gray-400">{item.date}</p>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-medium text-gray-800">{formatMoney(item.amount)}</span>
+                              <button
+                                onClick={() => {
+                                  if (confirm('确定删除该支出吗？')) {
+                                    deleteExpenseItem(category.id, item.id);
+                                    loadData();
+                                  }
+                                }}
+                                className="text-xs text-red-500 active:text-red-600"
+                              >
+                                删除
+                              </button>
+                            </div>
                           </div>
-                          <div className="flex items-center gap-3">
-                            <span className="text-sm font-medium text-gray-800">{formatMoney(item.amount)}</span>
-                            <button
-                              onClick={() => {
-                                if (confirm('确定删除该支出吗？')) {
-                                  deleteExpenseItem(category.id, item.id);
-                                  loadData();
-                                }
-                              }}
-                              className="text-xs text-red-500 active:text-red-600"
-                            >
-                              删除
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
+                        ))
+                      )}
 
-                    {/* 新增支出按钮 */}
-                    <ExpenseItemForm
-                      categoryId={category.id}
-                      onSave={() => loadData()}
-                    />
+                      {/* 新增支出按钮 */}
+                      <ExpenseItemForm
+                        categoryId={category.id}
+                        onSave={() => loadData()}
+                      />
+
+                      {/* 删除分类按钮 */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteCategory(category.id);
+                        }}
+                        className="w-full py-2.5 text-sm text-red-400 border border-dashed border-red-200 rounded-xl active:bg-red-50 active:border-red-300 transition-colors"
+                      >
+                        删除分类
+                      </button>
+                    </div>
                   </div>
                 )}
               </Card>
