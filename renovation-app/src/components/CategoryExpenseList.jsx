@@ -1,34 +1,27 @@
 // CategoryExpenseList - 分类支出列表组件
 // 支持分类管理、分类内支出、占比显示
-import { useState, useEffect } from 'react';
-import { formatMoney } from '../utils/formatters';
+import { useMemo, useState } from 'react';
+import { formatMoney, getTodayStr } from '../utils/formatters';
 import {
   getBudgetData,
+  saveBudgetData,
   saveCategory,
   deleteCategory,
   saveExpenseItem,
   deleteExpenseItem,
-  calculateCategoryTotal,
-  calculateTotalExpense,
-  calculateCategoryPercent,
 } from '../utils/storage';
 import Card from './Card';
 import Button from './Button';
 import Input from './Input';
 import Progress from './Progress';
 
-export default function CategoryExpenseList({ onBack }) {
-  const [budgetData, setBudgetData] = useState({ budget: 0, categories: [] });
+export default function CategoryExpenseList() {
+  const [budgetData, setBudgetData] = useState(() => getBudgetData());
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [expandedCategory, setExpandedCategory] = useState(null);
   const [showBudgetModal, setShowBudgetModal] = useState(false);
-  const [budgetInput, setBudgetInput] = useState('');
-
-  // 加载数据
-  useEffect(() => {
-    loadData();
-  }, []);
+  const [budgetInput, setBudgetInput] = useState(() => getBudgetData().budget?.toString() || '');
 
   function loadData() {
     const data = getBudgetData();
@@ -37,7 +30,16 @@ export default function CategoryExpenseList({ onBack }) {
   }
 
   // 计算总支出
-  const totalExpense = calculateTotalExpense();
+  const categoryTotals = useMemo(() => new Map(
+    (budgetData.categories || []).map((category) => [
+      category.id,
+      (category.items || []).reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    ]),
+  ), [budgetData.categories]);
+  const totalExpense = useMemo(
+    () => [...categoryTotals.values()].reduce((sum, amount) => sum + amount, 0),
+    [categoryTotals],
+  );
   const remaining = budgetData.budget - totalExpense;
   const percent = budgetData.budget > 0 ? (totalExpense / budgetData.budget) * 100 : 0;
 
@@ -47,7 +49,10 @@ export default function CategoryExpenseList({ onBack }) {
       alert('请输入分类名称');
       return;
     }
-    saveCategory({ name: newCategoryName.trim() });
+    if (!saveCategory({ name: newCategoryName.trim() })) {
+      alert('保存失败，可能是设备存储空间不足');
+      return;
+    }
     setNewCategoryName('');
     setShowAddCategory(false);
     loadData();
@@ -56,7 +61,10 @@ export default function CategoryExpenseList({ onBack }) {
   // 删除分类
   function handleDeleteCategory(catId) {
     if (confirm('确定删除该分类及其所有支出吗？')) {
-      deleteCategory(catId);
+      if (!deleteCategory(catId)) {
+        alert('删除失败，请重试');
+        return;
+      }
       loadData();
     }
   }
@@ -72,7 +80,10 @@ export default function CategoryExpenseList({ onBack }) {
     data.budget = amount;
     // 保持categories结构
     if (!data.categories) data.categories = [];
-    localStorage.setItem('renovation_budget', JSON.stringify(data));
+    if (!saveBudgetData(data)) {
+      alert('保存失败，可能是设备存储空间不足');
+      return;
+    }
     loadData();
     setShowBudgetModal(false);
   }
@@ -144,8 +155,10 @@ export default function CategoryExpenseList({ onBack }) {
           </div>
         ) : (
           budgetData.categories?.map((category, index) => {
-            const categoryTotal = calculateCategoryTotal(category.id);
-            const catPercent = calculateCategoryPercent(category.id);
+            const categoryTotal = categoryTotals.get(category.id) || 0;
+            const catPercent = totalExpense > 0
+              ? Math.max(0, (categoryTotal / totalExpense) * 100)
+              : 0;
             const isExpanded = expandedCategory === category.id;
 
             // 按日期排序（早的在前）
@@ -208,7 +221,10 @@ export default function CategoryExpenseList({ onBack }) {
                               <button
                                 onClick={() => {
                                   if (confirm('确定删除该支出吗？')) {
-                                    deleteExpenseItem(category.id, item.id);
+                                    if (!deleteExpenseItem(category.id, item.id)) {
+                                      alert('删除失败，请重试');
+                                      return;
+                                    }
                                     loadData();
                                   }
                                 }}
@@ -309,20 +325,24 @@ export default function CategoryExpenseList({ onBack }) {
 function ExpenseItemForm({ categoryId, onSave }) {
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [date, setDate] = useState(getTodayStr());
   const [showForm, setShowForm] = useState(false);
 
   function handleSubmit(e) {
     e.preventDefault();
-    if (!title.trim() || !amount) {
+    const numericAmount = Number(amount);
+    if (!title.trim() || !Number.isFinite(numericAmount) || numericAmount <= 0) {
       alert('请填写完整信息');
       return;
     }
-    saveExpenseItem(categoryId, {
+    if (!saveExpenseItem(categoryId, {
       title: title.trim(),
-      amount: Number(amount),
+      amount: numericAmount,
       date,
-    });
+    })) {
+      alert('保存失败，可能是设备存储空间不足');
+      return;
+    }
     setTitle('');
     setAmount('');
     setShowForm(false);
@@ -352,6 +372,9 @@ function ExpenseItemForm({ categoryId, onSave }) {
       <div className="flex gap-2">
         <input
           type="number"
+          min="0.01"
+          step="0.01"
+          inputMode="decimal"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
           placeholder="金额"

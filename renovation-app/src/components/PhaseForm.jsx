@@ -2,7 +2,6 @@
 import { useState } from 'react';
 import { PHASE_CATEGORIES, calculatePhaseDays } from '../utils/storage';
 import { getTodayStr } from '../utils/formatters';
-import Input from './Input';
 import Button from './Button';
 import Card from './Card';
 
@@ -61,7 +60,7 @@ export default function PhaseForm({ phase, onBack, onSave, onDelete }) {
       <form onSubmit={handleSubmit} className="space-y-5">
         {/* 分类选择 */}
         <div className="animate-slideUp">
-          <label className="block text-sm font-medium text-gray-600 mb-2">
+          <label htmlFor="phase-start-date" className="block text-sm font-medium text-gray-600 mb-2">
             施工阶段
           </label>
           <div className="grid grid-cols-4 gap-2">
@@ -90,6 +89,7 @@ export default function PhaseForm({ phase, onBack, onSave, onDelete }) {
             开始日期
           </label>
           <input
+            id="phase-start-date"
             type="date"
             name="startDate"
             value={formData.startDate}
@@ -100,10 +100,11 @@ export default function PhaseForm({ phase, onBack, onSave, onDelete }) {
 
         {/* 结束日期 */}
         <div className="animate-slideUp" style={{ animationDelay: '100ms' }}>
-          <label className="block text-sm font-medium text-gray-600 mb-2">
+          <label htmlFor="phase-end-date" className="block text-sm font-medium text-gray-600 mb-2">
             结束日期
           </label>
           <input
+            id="phase-end-date"
             type="date"
             name="endDate"
             value={formData.endDate}

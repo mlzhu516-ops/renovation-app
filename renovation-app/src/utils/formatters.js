@@ -7,7 +7,9 @@
  * @returns {string} 格式化后的金额
  */
 export function formatMoney(num) {
-  return num.toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' });
+  const amount = Number(num);
+  return (Number.isFinite(amount) ? amount : 0)
+    .toLocaleString('zh-CN', { style: 'currency', currency: 'CNY' });
 }
 
 /**
@@ -25,7 +27,7 @@ export function formatDateShort(dateStr) {
  * @returns {string} YYYY-MM-DD
  */
 export function getTodayStr() {
-  return new Date().toISOString().split('T')[0];
+  return formatDateISO(new Date());
 }
 
 /**

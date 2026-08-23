@@ -1,5 +1,10 @@
 // PhaseList - 阶段列表组件
-import { getCategoryName, getPhaseColor, calculatePhaseDays } from '../utils/storage';
+import {
+  getCategoryName,
+  getPhaseColor,
+  calculatePhaseDays,
+  calculateTotalPhaseDays,
+} from '../utils/storage';
 import Card from './Card';
 import Button from './Button';
 
@@ -10,7 +15,7 @@ export default function PhaseList({ phases, onEdit, onDelete, onAdd }) {
   );
 
   // 计算总工期
-  const totalDays = phases.reduce((sum, p) => sum + calculatePhaseDays(p.startDate, p.endDate), 0);
+  const totalDays = calculateTotalPhaseDays(phases);
 
   return (
     <div className="px-4 pb-24">
@@ -25,7 +30,7 @@ export default function PhaseList({ phases, onEdit, onDelete, onAdd }) {
             <p className="text-xs text-gray-400">总工期</p>
             <p className="text-2xl font-bold text-emerald-600">{totalDays}天</p>
           </div>
-          <Button onClick={onAdd} size="small" className="rounded-full w-10 h-10 p-0">
+          <Button onClick={onAdd} size="small" className="rounded-full w-10 h-10 p-0" aria-label="新增阶段">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>

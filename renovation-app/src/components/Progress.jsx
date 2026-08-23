@@ -1,8 +1,13 @@
 // Progress - 进度条组件（带动画）
 // 统一的进度条样式
 
+function calculatePercentage(value, max) {
+  if (!Number.isFinite(value) || !Number.isFinite(max) || max <= 0) return 0;
+  return Math.min(Math.max((value / max) * 100, 0), 100);
+}
+
 export default function Progress({ value, max = 100, color, showLabel = true, className = '' }) {
-  const percentage = Math.min((value / max) * 100, 100);
+  const percentage = calculatePercentage(value, max);
 
   // 颜色映射
   const colors = {
@@ -43,7 +48,7 @@ export function ProgressRing({
   showPercent = true,
   children
 }) {
-  const percentage = Math.min((value / max) * 100, 100);
+  const percentage = calculatePercentage(value, max);
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
   const offset = circumference - (percentage / 100) * circumference;
@@ -103,7 +108,7 @@ export function ProgressRing({
 
 // ProgressBar - 带标题的进度条
 export function ProgressBar({ label, value, max = 100, color, showPercent = true }) {
-  const percentage = Math.min((value / max) * 100, 100);
+  const percentage = calculatePercentage(value, max);
 
   const colors = {
     green: 'bg-emerald-500',

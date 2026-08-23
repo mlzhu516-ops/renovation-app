@@ -1,17 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { getProblemsByCategory, deleteProblem } from '../utils/storage';
+import { deleteImages, getStoredImageIds } from '../utils/imageStorage';
 import Card from './Card';
 import Button from './Button';
+import StoredImage from './StoredImage';
 
 // ProblemList - 问题列表组件
 // 展示某个分类下的所有问题，支持新增、编辑、删除
 export default function ProblemList({ category, onBack, onAdd, onEdit }) {
-  const [problems, setProblems] = useState([]);
-
-  // 加载问题数据
-  useEffect(() => {
-    loadProblems();
-  }, [category]);
+  const [problems, setProblems] = useState(() => getProblemsByCategory(category.id));
 
   function loadProblems() {
     const data = getProblemsByCategory(category.id);
@@ -19,9 +16,18 @@ export default function ProblemList({ category, onBack, onAdd, onEdit }) {
   }
 
   // 删除问题
-  function handleDelete(problemId) {
+  async function handleDelete(problemId) {
     if (confirm('确定要删除这个问题吗？')) {
-      deleteProblem(category.id, problemId);
+      const target = problems.find((problem) => problem.id === problemId);
+      if (!deleteProblem(category.id, problemId)) {
+        alert('删除失败，请重试');
+        return;
+      }
+      try {
+        await deleteImages(getStoredImageIds(target?.images));
+      } catch (cleanupError) {
+        console.warn('清理问题图片失败:', cleanupError);
+      }
       loadProblems();
     }
   }
@@ -88,9 +94,9 @@ export default function ProblemList({ category, onBack, onAdd, onEdit }) {
                 {problem.images && problem.images.length > 0 && (
                   <div className="mt-3 grid grid-cols-3 gap-2">
                     {problem.images.map((img, idx) => (
-                      <img
-                        key={idx}
-                        src={img}
+                      <StoredImage
+                        key={`${img?.id || img?.name || 'legacy'}-${idx}`}
+                        image={img}
                         alt={`图片${idx + 1}`}
                         className="w-full h-20 object-cover rounded-lg"
                       />

@@ -4,13 +4,95 @@
 const PROBLEMS_KEY = 'renovation_problems';
 const BUDGET_KEY = 'renovation_budget';
 
+function createId() {
+  return globalThis.crypto?.randomUUID?.()
+    || `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+}
+
+function finiteNumber(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function normalizeProblems(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value).map(([categoryId, problems]) => [
+      categoryId,
+      Array.isArray(problems)
+        ? problems.filter((problem) => problem && typeof problem === 'object').map((problem) => ({
+          ...problem,
+          id: String(problem.id || createId()),
+          title: typeof problem.title === 'string' ? problem.title : '',
+          content: typeof problem.content === 'string' ? problem.content : '',
+          solution: typeof problem.solution === 'string' ? problem.solution : '',
+          images: Array.isArray(problem.images) ? problem.images : [],
+        }))
+        : [],
+    ]),
+  );
+}
+
+function normalizeBudgetData(value) {
+  const categories = Array.isArray(value?.categories) ? value.categories : [];
+  return {
+    budget: Math.max(0, finiteNumber(value?.budget)),
+    categories: categories
+      .filter((category) => category && typeof category === 'object')
+      .map((category) => ({
+        ...category,
+        id: String(category.id || createId()),
+        name: typeof category.name === 'string' ? category.name : '未命名分类',
+        items: Array.isArray(category.items)
+          ? category.items.filter((item) => item && typeof item === 'object').map((item) => ({
+            ...item,
+            id: String(item.id || createId()),
+            title: typeof item.title === 'string' ? item.title : '未命名支出',
+            amount: Math.max(0, finiteNumber(item.amount)),
+            date: typeof item.date === 'string' ? item.date : '',
+          }))
+          : [],
+      })),
+  };
+}
+
+function normalizeScheduleData(value) {
+  const phases = Array.isArray(value?.phases) ? value.phases : [];
+  const tasks = value?.tasks && typeof value.tasks === 'object' && !Array.isArray(value.tasks)
+    ? value.tasks
+    : {};
+  return {
+    phases: phases.filter((phase) => phase && typeof phase === 'object').map((phase) => ({
+      ...phase,
+      id: String(phase.id || createId()),
+      category: typeof phase.category === 'string' ? phase.category : 'electrical',
+      startDate: typeof phase.startDate === 'string' ? phase.startDate : '',
+      endDate: typeof phase.endDate === 'string' ? phase.endDate : '',
+    })),
+    tasks: Object.fromEntries(
+      Object.entries(tasks).map(([date, entries]) => [
+        date,
+        Array.isArray(entries)
+          ? entries.filter((task) => task && typeof task === 'object').map((task) => ({
+            ...task,
+            id: String(task.id || createId()),
+            title: typeof task.title === 'string' ? task.title : '未命名任务',
+            description: typeof task.description === 'string' ? task.description : '',
+            category: typeof task.category === 'string' ? task.category : 'electrical',
+          }))
+          : [],
+      ]),
+    ),
+  };
+}
+
 // ========== 施工工艺模块 ==========
 
 // 获取所有问题数据
 export function getProblems() {
   try {
     const data = localStorage.getItem(PROBLEMS_KEY);
-    return data ? JSON.parse(data) : {};
+    return data ? normalizeProblems(JSON.parse(data)) : {};
   } catch (error) {
     console.error('读取数据失败:', error);
     return {};
@@ -36,6 +118,7 @@ export function getProblemsByCategory(categoryId) {
 
 // 添加或更新问题
 export function saveProblem(categoryId, problem) {
+  if (!categoryId || !problem || !problem.title?.trim() || !problem.content?.trim()) return false;
   const problems = getProblems();
   if (!problems[categoryId]) {
     problems[categoryId] = [];
@@ -49,7 +132,7 @@ export function saveProblem(categoryId, problem) {
     }
   } else {
     // 生成唯一id
-    problem.id = Date.now().toString();
+    problem.id = createId();
     problems[categoryId].push(problem);
   }
 
@@ -73,7 +156,7 @@ export function getBudgetData() {
   try {
     const data = localStorage.getItem(BUDGET_KEY);
     if (data) {
-      return JSON.parse(data);
+      return normalizeBudgetData(JSON.parse(data));
     }
     // 默认值：支持旧数据结构迁移
     return { budget: 0, categories: [] };
@@ -96,8 +179,9 @@ export function saveBudgetData(data) {
 
 // 设置总预算
 export function setBudget(amount) {
+  if (!Number.isFinite(Number(amount)) || Number(amount) <= 0) return false;
   const data = getBudgetData();
-  data.budget = amount;
+  data.budget = Number(amount);
   return saveBudgetData(data);
 }
 
@@ -105,6 +189,7 @@ export function setBudget(amount) {
 
 // 添加或更新分类
 export function saveCategory(category) {
+  if (!category || !category.name?.trim()) return false;
   const data = getBudgetData();
   if (!data.categories) {
     data.categories = [];
@@ -118,7 +203,7 @@ export function saveCategory(category) {
     }
   } else {
     // 新增分类
-    category.id = Date.now().toString();
+    category.id = createId();
     category.items = [];
     data.categories.push(category);
   }
@@ -140,10 +225,13 @@ export function deleteCategory(categoryId) {
 
 // 添加或更新支出条目
 export function saveExpenseItem(categoryId, item) {
+  const amount = Number(item?.amount);
+  if (!item?.title?.trim() || !Number.isFinite(amount) || amount <= 0 || !item.date) return false;
   const data = getBudgetData();
   const category = data.categories?.find(c => c.id === categoryId);
 
   if (!category) return false;
+  item = { ...item, title: item.title.trim(), amount };
 
   if (!category.items) {
     category.items = [];
@@ -157,7 +245,7 @@ export function saveExpenseItem(categoryId, item) {
     }
   } else {
     // 新增条目
-    item.id = Date.now().toString();
+    item.id = createId();
     category.items.push(item);
   }
 
@@ -182,7 +270,7 @@ export function calculateCategoryTotal(categoryId) {
   const data = getBudgetData();
   const category = data.categories?.find(c => c.id === categoryId);
   if (!category?.items) return 0;
-  return category.items.reduce((sum, item) => sum + (item.amount || 0), 0);
+  return category.items.reduce((sum, item) => sum + finiteNumber(item.amount), 0);
 }
 
 // 计算总支出金额
@@ -190,14 +278,14 @@ export function calculateTotalExpense() {
   const data = getBudgetData();
   if (!data.categories) return 0;
   return data.categories.reduce((total, cat) => {
-    return total + (cat.items?.reduce((sum, item) => sum + (item.amount || 0), 0) || 0);
+    return total + (cat.items?.reduce((sum, item) => sum + finiteNumber(item.amount), 0) || 0);
   }, 0);
 }
 
 // 计算分类占比（百分比）
 export function calculateCategoryPercent(categoryId) {
   const total = calculateTotalExpense();
-  if (total === 0) return 0;
+  if (total <= 0) return 0;
   const categoryTotal = calculateCategoryTotal(categoryId);
   return (categoryTotal / total) * 100;
 }
@@ -235,7 +323,7 @@ export function getScheduleData() {
   try {
     const data = localStorage.getItem(SCHEDULE_KEY);
     if (data) {
-      return JSON.parse(data);
+      return normalizeScheduleData(JSON.parse(data));
     }
     // 默认值：phases 数组 + tasks 对象
     return { phases: [], tasks: {} };
@@ -260,6 +348,7 @@ export function saveScheduleData(data) {
 
 // 添加或更新阶段
 export function savePhase(phase) {
+  if (!phase?.category || !phase.startDate || !phase.endDate || phase.endDate < phase.startDate) return false;
   const data = getScheduleData();
   if (!data.phases) {
     data.phases = [];
@@ -273,7 +362,7 @@ export function savePhase(phase) {
     }
   } else {
     // 新增
-    phase.id = Date.now().toString();
+    phase.id = createId();
     data.phases.push(phase);
   }
 
@@ -292,10 +381,37 @@ export function deletePhase(phaseId) {
 
 // 计算阶段天数
 export function calculatePhaseDays(startDate, endDate) {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
+  const start = new Date(`${startDate}T00:00:00Z`);
+  const end = new Date(`${endDate}T00:00:00Z`);
   const diff = (end - start) / (1000 * 60 * 60 * 24);
-  return Math.floor(diff) + 1;
+  return Number.isFinite(diff) && diff >= 0 ? Math.floor(diff) + 1 : 0;
+}
+
+// 计算所有阶段覆盖的实际日历天数，重叠日期只计算一次
+export function calculateTotalPhaseDays(phases) {
+  const ranges = phases
+    .map((phase) => ({
+      start: new Date(`${phase.startDate}T00:00:00Z`).getTime(),
+      end: new Date(`${phase.endDate}T00:00:00Z`).getTime(),
+    }))
+    .filter(({ start, end }) => Number.isFinite(start) && Number.isFinite(end) && end >= start)
+    .sort((a, b) => a.start - b.start);
+
+  if (ranges.length === 0) return 0;
+  const day = 24 * 60 * 60 * 1000;
+  let total = 0;
+  let current = { ...ranges[0] };
+
+  ranges.slice(1).forEach((range) => {
+    if (range.start <= current.end + day) {
+      current.end = Math.max(current.end, range.end);
+    } else {
+      total += Math.floor((current.end - current.start) / day) + 1;
+      current = { ...range };
+    }
+  });
+
+  return total + Math.floor((current.end - current.start) / day) + 1;
 }
 
 // ========== 每日任务（Task）操作 ==========
@@ -314,7 +430,9 @@ export function getAllTasks() {
 
 // 添加或更新任务
 export function saveDailyTask(dateStr, task) {
+  if (!dateStr || !task?.title?.trim() || !task.category) return false;
   const data = getScheduleData();
+  task = { ...task, title: task.title.trim() };
   if (!data.tasks) {
     data.tasks = {};
   }
@@ -330,7 +448,7 @@ export function saveDailyTask(dateStr, task) {
     }
   } else {
     // 新增
-    task.id = Date.now().toString();
+    task.id = createId();
     data.tasks[dateStr].push(task);
   }
 

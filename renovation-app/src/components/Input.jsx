@@ -1,3 +1,5 @@
+import { useId } from 'react';
+
 // Input - iOS风格输入框组件
 // 统一的输入框样式
 
@@ -9,16 +11,21 @@ export default function Input({
   label,
   error,
   className = '',
-  name
+  name,
+  id,
+  ...inputProps
 }) {
+  const generatedId = useId();
+  const inputId = id || `${name || 'input'}-${generatedId}`;
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-gray-600 mb-1.5">
+        <label htmlFor={inputId} className="block text-sm font-medium text-gray-600 mb-1.5">
           {label}
         </label>
       )}
       <input
+        id={inputId}
         type={type}
         name={name}
         value={value}
@@ -32,6 +39,7 @@ export default function Input({
           transition-all duration-150
           ${error ? 'border-red-300 focus:ring-red-200' : ''}
         `}
+        {...inputProps}
       />
       {error && (
         <p className="text-xs text-red-500 mt-1">{error}</p>
@@ -48,16 +56,21 @@ export function TextArea({
   label,
   rows = 3,
   className = '',
-  name
+  name,
+  id,
+  ...textareaProps
 }) {
+  const generatedId = useId();
+  const textareaId = id || `${name || 'textarea'}-${generatedId}`;
   return (
     <div className={className}>
       {label && (
-        <label className="block text-sm font-medium text-gray-600 mb-1.5">
+        <label htmlFor={textareaId} className="block text-sm font-medium text-gray-600 mb-1.5">
           {label}
         </label>
       )}
       <textarea
+        id={textareaId}
         name={name}
         value={value}
         onChange={onChange}
@@ -70,6 +83,7 @@ export function TextArea({
           focus:outline-none focus:ring-2 focus:ring-black/20 focus:border-gray-300
           transition-all duration-150 resize-none
         `}
+        {...textareaProps}
       />
     </div>
   );

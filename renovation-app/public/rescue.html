@@ -96,6 +96,7 @@
       button.secondary { color: #2457a6; background: #eaf1ff; }
       button.danger { background: #c93c3c; }
       button:disabled { opacity: 0.45; cursor: not-allowed; }
+      button[hidden] { display: none; }
 
       input[type="file"] {
         position: absolute;
@@ -211,6 +212,7 @@
         </details>
         <div id="importInfo" class="import-info">尚未选择备份文件。</div>
         <button id="importButton" class="danger" disabled>导入并覆盖当前数据</button>
+        <button id="rollbackButton" class="secondary" hidden>恢复导入前的数据</button>
         <a id="openApp" class="app-link" href="/">返回装修助手</a>
       </section>
 
@@ -238,6 +240,7 @@
       const importText = document.getElementById('importText')
       const importInfo = document.getElementById('importInfo')
       const importButton = document.getElementById('importButton')
+      const rollbackButton = document.getElementById('rollbackButton')
       const openApp = document.getElementById('openApp')
       const actionButtons = [
         document.getElementById('shareButton'),
@@ -247,6 +250,122 @@
 
       let backupText = ''
       let pendingImport = null
+
+      const DB_NAME = 'renovation_assistant'
+      const DB_VERSION = 2
+      const IMAGE_STORE = 'images'
+      const ROLLBACK_STORE = 'rollbacks'
+
+      function requestToPromise(request) {
+        return new Promise((resolve, reject) => {
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+      }
+
+      function transactionToPromise(transaction) {
+        return new Promise((resolve, reject) => {
+          transaction.oncomplete = resolve
+          transaction.onerror = () => reject(transaction.error)
+          transaction.onabort = () => reject(transaction.error)
+        })
+      }
+
+      function openDatabase() {
+        return new Promise((resolve, reject) => {
+          const request = indexedDB.open(DB_NAME, DB_VERSION)
+          request.onupgradeneeded = () => {
+            const database = request.result
+            if (!database.objectStoreNames.contains(IMAGE_STORE)) {
+              database.createObjectStore(IMAGE_STORE, { keyPath: 'id' })
+            }
+            if (!database.objectStoreNames.contains(ROLLBACK_STORE)) {
+              database.createObjectStore(ROLLBACK_STORE, { keyPath: 'id' })
+            }
+          }
+          request.onsuccess = () => resolve(request.result)
+          request.onerror = () => reject(request.error)
+        })
+      }
+
+      function blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader()
+          reader.onload = () => resolve(reader.result)
+          reader.onerror = () => reject(reader.error)
+          reader.readAsDataURL(blob)
+        })
+      }
+
+      async function dataUrlToBlob(dataUrl) {
+        return (await fetch(dataUrl)).blob()
+      }
+
+      async function readImageRecords() {
+        const database = await openDatabase()
+        try {
+          return await requestToPromise(
+            database.transaction(IMAGE_STORE).objectStore(IMAGE_STORE).getAll(),
+          )
+        } finally {
+          database.close()
+        }
+      }
+
+      async function serializeImages(records) {
+        return Promise.all(records.map(async (record) => ({
+          id: record.id,
+          name: record.name || '装修图片',
+          type: record.type || record.blob?.type || 'image/jpeg',
+          size: Number(record.size || record.blob?.size || 0),
+          createdAt: Number(record.createdAt || Date.now()),
+          dataUrl: await blobToDataUrl(record.blob),
+        })))
+      }
+
+      async function replaceImages(serializedImages) {
+        const records = await Promise.all(serializedImages.map(async (image) => ({
+          id: image.id,
+          name: image.name,
+          type: image.type,
+          size: image.size,
+          createdAt: image.createdAt,
+          blob: await dataUrlToBlob(image.dataUrl),
+        })))
+        const database = await openDatabase()
+        try {
+          const transaction = database.transaction(IMAGE_STORE, 'readwrite')
+          const store = transaction.objectStore(IMAGE_STORE)
+          store.clear()
+          records.forEach((record) => store.put(record))
+          await transactionToPromise(transaction)
+        } finally {
+          database.close()
+        }
+      }
+
+      async function saveRollback(snapshot) {
+        const database = await openDatabase()
+        try {
+          const transaction = database.transaction(ROLLBACK_STORE, 'readwrite')
+          transaction.objectStore(ROLLBACK_STORE).put({ id: 'latest', ...snapshot })
+          await transactionToPromise(transaction)
+        } finally {
+          database.close()
+        }
+        rollbackButton.hidden = false
+      }
+
+      async function getRollback() {
+        const database = await openDatabase()
+        try {
+          return await requestToPromise(
+            database.transaction(ROLLBACK_STORE).objectStore(ROLLBACK_STORE).get('latest'),
+          )
+        } finally {
+          database.close()
+        }
+      }
 
       function describeData(key, rawValue) {
         if (rawValue === null) return '当前微信中未找到'
@@ -274,7 +393,7 @@
         return `已找到 · ${new Blob([rawValue]).size} 字节`
       }
 
-      function readAndRender() {
+      async function readAndRender() {
         const storage = {}
         let foundCount = 0
         results.textContent = ''
@@ -303,20 +422,33 @@
           results.append(row)
         })
 
+        let images = []
+        let imageReadFailed = false
+        try {
+          images = await serializeImages(await readImageRecords())
+        } catch (error) {
+          console.error('读取图片数据库失败:', error)
+          imageReadFailed = true
+        }
+
         const backup = {
           format: 'renovation-assistant-backup',
-          version: 1,
+          version: 2,
           exportedAt: new Date().toISOString(),
           sourceOrigin: location.origin,
           storage,
+          images,
         }
 
         backupText = JSON.stringify(backup, null, 2)
         preview.value = backupText
         actionButtons.forEach((button) => { button.disabled = foundCount === 0 })
-        message.textContent = foundCount === 0
+        const summaryMessage = foundCount === 0
           ? '未找到装修数据。请确认使用的是原手机、原微信和原域名。'
-          : `已检测到 ${foundCount}/3 类数据，请立即保存至少两份备份。`
+          : `已检测到 ${foundCount}/3 类数据及 ${images.length} 张独立图片，请立即保存至少两份备份。`
+        message.textContent = imageReadFailed
+          ? `${summaryMessage} 图片数据库暂时无法读取，本次备份可能不含独立图片。`
+          : summaryMessage
       }
 
       function backupFilename() {
@@ -367,8 +499,79 @@
         }
       }
 
+      function assert(condition, message) {
+        if (!condition) throw new Error(message)
+      }
+
+      function validateStorageValue(key, rawValue, referencedImageIds) {
+        const value = JSON.parse(rawValue)
+        if (key === 'renovation_problems') {
+          assert(value && typeof value === 'object' && !Array.isArray(value), '施工工艺问题必须是分类对象。')
+          Object.values(value).forEach((problems) => {
+            assert(Array.isArray(problems), '施工工艺分类内容必须是数组。')
+            problems.forEach((problem) => {
+              assert(problem && typeof problem === 'object', '问题记录格式无效。')
+              assert(typeof problem.title === 'string' && typeof problem.content === 'string', '问题标题或内容格式无效。')
+              assert(problem.images === undefined || Array.isArray(problem.images), '问题图片格式无效。')
+              ;(problem.images || []).forEach((image) => {
+                assert(
+                  typeof image === 'string' || (image && typeof image.id === 'string'),
+                  '问题图片引用格式无效。',
+                )
+                if (image && typeof image === 'object') referencedImageIds.add(image.id)
+              })
+            })
+          })
+        } else if (key === 'renovation_budget') {
+          assert(value && typeof value === 'object', '预算数据必须是对象。')
+          assert(Number.isFinite(Number(value.budget)) && Number(value.budget) >= 0, '总预算金额无效。')
+          assert(Array.isArray(value.categories), '预算分类必须是数组。')
+          value.categories.forEach((category) => {
+            assert(category && typeof category.name === 'string' && Array.isArray(category.items), '预算分类格式无效。')
+            category.items.forEach((item) => {
+              assert(item && typeof item.title === 'string', '支出名称格式无效。')
+              assert(Number.isFinite(Number(item.amount)) && Number(item.amount) > 0, '支出金额必须大于零。')
+              assert(typeof item.date === 'string', '支出日期格式无效。')
+            })
+          })
+        } else if (key === 'renovation_schedule') {
+          assert(value && typeof value === 'object', '进度数据必须是对象。')
+          assert(Array.isArray(value.phases), '施工阶段必须是数组。')
+          assert(value.tasks && typeof value.tasks === 'object' && !Array.isArray(value.tasks), '每日任务必须是日期对象。')
+          value.phases.forEach((phase) => {
+            assert(typeof phase.category === 'string', '施工阶段分类无效。')
+            assert(typeof phase.startDate === 'string' && typeof phase.endDate === 'string', '施工阶段日期无效。')
+            assert(phase.endDate >= phase.startDate, '施工阶段结束日期早于开始日期。')
+          })
+          Object.values(value.tasks).forEach((tasks) => {
+            assert(Array.isArray(tasks), '每日任务内容必须是数组。')
+            tasks.forEach((task) => assert(task && typeof task.title === 'string', '每日任务格式无效。'))
+          })
+        }
+        return value
+      }
+
+      function validateImages(images) {
+        assert(Array.isArray(images), '图片备份格式无效。')
+        const ids = new Set()
+        return images.map((image) => {
+          assert(image && typeof image.id === 'string' && image.id, '图片 ID 无效。')
+          assert(!ids.has(image.id), '图片 ID 重复。')
+          assert(typeof image.dataUrl === 'string' && /^data:image\//.test(image.dataUrl), '图片内容格式无效。')
+          ids.add(image.id)
+          return {
+            id: image.id,
+            name: typeof image.name === 'string' ? image.name : '装修图片',
+            type: typeof image.type === 'string' ? image.type : 'image/jpeg',
+            size: Number(image.size) || 0,
+            createdAt: Number(image.createdAt) || Date.now(),
+            dataUrl: image.dataUrl,
+          }
+        })
+      }
+
       function validateBackup(value) {
-        if (!value || value.format !== 'renovation-assistant-backup' || value.version !== 1) {
+        if (!value || value.format !== 'renovation-assistant-backup' || ![1, 2].includes(value.version)) {
           throw new Error('不是装修助手生成的有效备份文件。')
         }
         if (!value.storage || typeof value.storage !== 'object') {
@@ -378,6 +581,7 @@
         let foundCount = 0
         const storage = {}
         const summaries = []
+        const referencedImageIds = new Set()
 
         storageItems.forEach((item) => {
           const rawValue = value.storage[item.key]
@@ -385,7 +589,7 @@
             throw new Error(`${item.label}的数据格式无效。`)
           }
           if (typeof rawValue === 'string') {
-            JSON.parse(rawValue)
+            validateStorageValue(item.key, rawValue, referencedImageIds)
             foundCount += 1
           }
           storage[item.key] = rawValue
@@ -394,11 +598,18 @@
 
         if (foundCount === 0) throw new Error('备份文件中没有可恢复的装修数据。')
 
+        const images = value.version === 2 ? validateImages(value.images || []) : []
+        const availableImageIds = new Set(images.map((image) => image.id))
+        referencedImageIds.forEach((id) => {
+          assert(availableImageIds.has(id), `备份缺少图片：${id}`)
+        })
+
         return {
           exportedAt: value.exportedAt,
           foundCount,
           storage,
           summaries,
+          images,
         }
       }
 
@@ -411,8 +622,8 @@
           importInfo.textContent = '尚未选择备份文件。'
           return
         }
-        if (file.size > 10 * 1024 * 1024) {
-          importInfo.textContent = '文件超过 10MB，请确认选择了正确的 JSON 备份。'
+        if (file.size > 200 * 1024 * 1024) {
+          importInfo.textContent = '文件超过 200MB，请确认选择了正确的 JSON 备份。'
           return
         }
 
@@ -432,6 +643,7 @@
         importInfo.textContent = [
           sourceLabel,
           `备份时间：${time}`,
+          `独立图片：${pendingImport.images.length} 张`,
           ...pendingImport.summaries,
         ].join('\n')
         importButton.disabled = false
@@ -449,34 +661,85 @@
         }
       }
 
-      function importBackup() {
+      function applyStorage(storage) {
+        storageItems.forEach((item) => {
+          const rawValue = storage[item.key]
+          if (rawValue === null) localStorage.removeItem(item.key)
+          else localStorage.setItem(item.key, rawValue)
+        })
+      }
+
+      async function restoreSnapshot(snapshot) {
+        applyStorage(snapshot.storage)
+        const serializedImages = await serializeImages(snapshot.images || [])
+        await replaceImages(serializedImages)
+      }
+
+      async function importBackup() {
         if (!pendingImport) return
         const confirmed = window.confirm(
           `即将用备份中的 ${pendingImport.foundCount} 类数据覆盖当前浏览器。是否继续？`,
         )
         if (!confirmed) return
 
+        importButton.disabled = true
+        let rollback = null
+
         try {
-          const rollback = {
+          rollback = {
             createdAt: new Date().toISOString(),
             storage: Object.fromEntries(
               storageItems.map((item) => [item.key, localStorage.getItem(item.key)]),
             ),
+            images: await readImageRecords(),
           }
-          localStorage.setItem('renovation_import_rollback', JSON.stringify(rollback))
+          await saveRollback(rollback)
+          applyStorage(pendingImport.storage)
+          await replaceImages(pendingImport.images)
 
-          storageItems.forEach((item) => {
-            const rawValue = pendingImport.storage[item.key]
-            if (rawValue === null) localStorage.removeItem(item.key)
-            else localStorage.setItem(item.key, rawValue)
-          })
-
-          readAndRender()
-          importInfo.textContent += '\n\n导入成功。导入前的数据已保存在本浏览器的回滚快照中。'
-          importButton.disabled = true
+          await readAndRender()
+          importInfo.textContent += '\n\n导入成功。需要时可点击下方按钮恢复导入前的数据。'
           openApp.hidden = false
         } catch (error) {
-          importInfo.textContent += `\n\n导入失败：${error.message}`
+          if (rollback) {
+            try {
+              await restoreSnapshot(rollback)
+              importInfo.textContent += `\n\n导入失败，已自动恢复原数据：${error.message}`
+            } catch (rollbackError) {
+              importInfo.textContent += `\n\n导入失败，自动恢复也失败：${rollbackError.message}`
+            }
+          } else {
+            importInfo.textContent += `\n\n无法创建安全快照，未执行导入：${error.message}`
+          }
+          importButton.disabled = false
+        }
+      }
+
+      async function restoreLatestRollback() {
+        try {
+          const rollback = await getRollback()
+          if (!rollback) {
+            importInfo.textContent = '没有找到可恢复的导入前快照。'
+            rollbackButton.hidden = true
+            return
+          }
+          if (!window.confirm('将恢复最近一次导入前的数据，是否继续？')) return
+
+          await restoreSnapshot(rollback)
+          await readAndRender()
+          importInfo.textContent = `已恢复 ${new Date(rollback.createdAt).toLocaleString('zh-CN')} 保存的导入前数据。`
+          openApp.hidden = false
+        } catch (error) {
+          importInfo.textContent = `恢复失败：${error.message}`
+        }
+      }
+
+      async function initializeRollbackButton() {
+        try {
+          rollbackButton.hidden = !(await getRollback())
+        } catch (error) {
+          console.error('检查回滚快照失败:', error)
+          rollbackButton.hidden = true
         }
       }
 
@@ -487,8 +750,10 @@
       importFile.addEventListener('change', handleImportFile)
       document.getElementById('validateTextButton').addEventListener('click', handleImportText)
       importButton.addEventListener('click', importBackup)
+      rollbackButton.addEventListener('click', restoreLatestRollback)
 
       readAndRender()
+      initializeRollbackButton()
     </script>
   </body>
 </html>

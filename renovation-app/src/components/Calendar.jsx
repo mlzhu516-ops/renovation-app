@@ -21,8 +21,8 @@ export default function Calendar({ phases, tasks, onSelectDate }) {
   }
 
   // 获取某天的阶段
-  function getPhaseForDate(dateStr) {
-    return phases.find(p => dateStr >= p.startDate && dateStr <= p.endDate);
+  function getPhasesForDate(dateStr) {
+    return phases.filter(p => dateStr >= p.startDate && dateStr <= p.endDate);
   }
 
   // 获取某天的任务数量
@@ -37,31 +37,37 @@ export default function Calendar({ phases, tasks, onSelectDate }) {
 
   for (let day = 1; day <= daysInMonth; day++) {
     const dateStr = formatDateISO(new Date(year, month, day));
-    const phase = getPhaseForDate(dateStr);
+    const datePhases = getPhasesForDate(dateStr);
+    const primaryPhase = datePhases[0];
     const taskCount = getTaskCountForDate(dateStr);
 
     let phaseBg = '';
-    if (phase) {
-      phaseBg = getPhaseColor(phase.category) + '/20';
+    if (primaryPhase) {
+      phaseBg = getPhaseColor(primaryPhase.category) + '/20';
     }
 
     days.push(
       <button
         key={day}
         onClick={() => onSelectDate && onSelectDate(dateStr)}
+        aria-label={`${dateStr}${datePhases.length ? `，${datePhases.length}个阶段` : ''}${taskCount ? `，${taskCount}个任务` : ''}`}
         className={`
           h-16 border border-gray-100/50 relative cursor-pointer select-none
           ${phaseBg || 'bg-white'} active:bg-gray-50
           transition-colors duration-100
         `}
       >
-        <span className={`absolute top-1.5 left-2 text-sm font-medium ${phase ? 'text-gray-800' : 'text-gray-700'}`}>
+        <span className={`absolute top-1.5 left-2 text-sm font-medium ${primaryPhase ? 'text-gray-800' : 'text-gray-700'}`}>
           {day}
         </span>
 
         {/* 阶段色块 */}
-        {phase && (
-          <div className={`absolute bottom-0 left-0 right-0 h-2 ${getPhaseColor(phase.category)}`} />
+        {datePhases.length > 0 && (
+          <div className="absolute bottom-0 left-0 right-0 flex h-2">
+            {datePhases.slice(0, 3).map((phase) => (
+              <span key={phase.id} className={`flex-1 ${getPhaseColor(phase.category)}`} />
+            ))}
+          </div>
         )}
 
         {/* 任务标记 */}
@@ -83,7 +89,9 @@ export default function Calendar({ phases, tasks, onSelectDate }) {
       {/* 月份切换 */}
       <div className="flex items-center justify-between p-4 border-b border-gray-100">
         <button
+          type="button"
           onClick={prevMonth}
+          aria-label="上个月"
           className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200 transition-colors"
         >
           <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -94,7 +102,9 @@ export default function Calendar({ phases, tasks, onSelectDate }) {
           {year}年{month + 1}月
         </span>
         <button
+          type="button"
           onClick={nextMonth}
+          aria-label="下个月"
           className="w-10 h-10 flex items-center justify-center bg-gray-100 rounded-xl active:bg-gray-200 transition-colors"
         >
           <svg className="w-6 h-6 text-gray-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

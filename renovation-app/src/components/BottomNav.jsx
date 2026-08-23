@@ -54,6 +54,7 @@ export default function BottomNav({ activeTab, onTabChange }) {
               type="button"
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
+              aria-current={isActive ? 'page' : undefined}
               className={`
                 relative flex-1 py-2.5 pb-5 flex flex-col items-center justify-center gap-0.5
                 transition-all duration-200

@@ -6,7 +6,8 @@ export default function Card({
   className = '',
   hover = false,
   onClick,
-  padding = true
+  padding = true,
+  ...cardProps
 }) {
   const baseClasses = `
     bg-white rounded-2xl shadow-sm border border-gray-100
@@ -16,7 +17,7 @@ export default function Card({
   `;
 
   return (
-    <div onClick={onClick} className={`${baseClasses} ${className}`}>
+    <div onClick={onClick} className={`${baseClasses} ${className}`} {...cardProps}>
       {children}
     </div>
   );

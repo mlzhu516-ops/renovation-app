@@ -7,7 +7,9 @@ export default function Button({
   size = 'medium',
   onClick,
   disabled = false,
-  className = ''
+  className = '',
+  type = 'button',
+  ...buttonProps
 }) {
   // 变体样式
   const variants = {
@@ -36,9 +38,11 @@ export default function Button({
 
   return (
     <button
+      type={type}
       onClick={onClick}
       disabled={disabled}
       className={baseClasses}
+      {...buttonProps}
     >
       {children}
     </button>
@@ -46,10 +50,12 @@ export default function Button({
 }
 
 // IconButton - 图标按钮
-export function IconButton({ children, onClick, className = '' }) {
+export function IconButton({ children, onClick, className = '', type = 'button', ...buttonProps }) {
   return (
     <button
+      type={type}
       onClick={onClick}
+      {...buttonProps}
       className={`
         w-10 h-10 flex items-center justify-center rounded-xl
         bg-gray-100 text-gray-600

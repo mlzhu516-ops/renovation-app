@@ -1,5 +1,5 @@
 // SchedulePage - 进度计划模块
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import Calendar from './Calendar';
 import PhaseList from './PhaseList';
 import PhaseForm from './PhaseForm';
@@ -13,21 +13,16 @@ import {
   deleteDailyTask,
 } from '../utils/storage';
 
-export default function SchedulePage({ onBack }) {
+export default function SchedulePage() {
   // 视图状态：calendar / phaseList / phaseForm / task / taskForm
   const [view, setView] = useState('calendar');
-  const [phases, setPhases] = useState([]);
-  const [tasks, setTasks] = useState({});
+  const [phases, setPhases] = useState(() => getScheduleData().phases || []);
+  const [tasks, setTasks] = useState(() => getScheduleData().tasks || {});
   const [editingPhase, setEditingPhase] = useState(null);
 
   // 任务相关
   const [selectedDate, setSelectedDate] = useState(null);
   const [editingTask, setEditingTask] = useState(null);
-
-  // 加载数据
-  useEffect(() => {
-    loadData();
-  }, []);
 
   function loadData() {
     const data = getScheduleData();
@@ -48,21 +43,30 @@ export default function SchedulePage({ onBack }) {
   }
 
   function handleSavePhase(phaseData) {
-    savePhase(phaseData);
+    if (!savePhase(phaseData)) {
+      alert('保存失败，可能是设备存储空间不足');
+      return;
+    }
     loadData();
     setView('phaseList');
     setEditingPhase(null);
   }
 
   function handleDeletePhase(phaseId) {
-    deletePhase(phaseId);
+    if (!deletePhase(phaseId)) {
+      alert('删除失败，请重试');
+      return;
+    }
     loadData();
     setView('phaseList');
     setEditingPhase(null);
   }
 
   function handleDeleteFromForm(phaseId) {
-    deletePhase(phaseId);
+    if (!deletePhase(phaseId)) {
+      alert('删除失败，请重试');
+      return;
+    }
     loadData();
     setView('phaseList');
     setEditingPhase(null);
@@ -74,10 +78,6 @@ export default function SchedulePage({ onBack }) {
     setSelectedDate(dateStr);
     setView('task');
     setEditingTask(null);
-  }
-
-  function handleSelectRange(start, end) {
-    alert(`已选择 ${start} 至 ${end}，请在阶段列表中创建`);
   }
 
   function handleCloseTask() {
@@ -97,19 +97,20 @@ export default function SchedulePage({ onBack }) {
   }
 
   function handleSaveTask(taskData) {
-    saveDailyTask(selectedDate, taskData);
+    if (!saveDailyTask(selectedDate, taskData)) {
+      alert('保存失败，可能是设备存储空间不足');
+      return;
+    }
     loadData();
     setView('task');
     setEditingTask(null);
   }
 
   function handleDeleteTask(taskId) {
-    deleteDailyTask(selectedDate, taskId);
-    loadData();
-  }
-
-  function handleUpdatePhase(updatedPhase) {
-    savePhase(updatedPhase);
+    if (!deleteDailyTask(selectedDate, taskId)) {
+      alert('删除失败，请重试');
+      return;
+    }
     loadData();
   }
 

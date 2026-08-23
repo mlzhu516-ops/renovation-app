@@ -1,7 +1,13 @@
 import { useState, useRef } from 'react';
 import { saveProblem } from '../utils/storage';
+import {
+  deleteImages,
+  getStoredImageIds,
+  persistProblemImages,
+} from '../utils/imageStorage';
 import Input, { TextArea } from './Input';
 import Button from './Button';
+import StoredImage from './StoredImage';
 
 // ProblemForm - 问题表单组件
 // 用于新增和编辑问题，包含图片上传（转Base64，支持多张）
@@ -14,6 +20,7 @@ export default function ProblemForm({ category, problem, onBack, onSaved }) {
     images: problem?.images || [],
   });
   const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const fileInputRef = useRef(null);
 
   // 处理输入变化
@@ -27,40 +34,51 @@ export default function ProblemForm({ category, problem, onBack, onSaved }) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
-    // 限制最多9张图片
-    if (formData.images.length + files.length > 9) {
+    const validFiles = files.filter((file) => file.type.startsWith('image/') && file.size <= 2 * 1024 * 1024);
+    const skippedCount = files.length - validFiles.length;
+    if (skippedCount > 0) {
+      alert(`已跳过 ${skippedCount} 张非图片或超过 2MB 的文件`);
+    }
+
+    if (validFiles.length === 0) {
+      e.target.value = '';
+      return;
+    }
+
+    if (formData.images.length + validFiles.length > 9) {
       alert('最多只能上传9张图片');
+      e.target.value = '';
       return;
     }
 
     setUploading(true);
-    let loadedCount = 0;
-    const newImages = [];
-
-    files.forEach((file) => {
-      // 限制单张图片大小 2MB
-      if (file.size > 2 * 1024 * 1024) {
-        alert(`图片 ${file.name} 大小超过2MB，已跳过`);
-        return;
-      }
-
+    const readFile = (file) => new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = (event) => {
-        newImages.push(event.target.result);
-        loadedCount++;
-        if (loadedCount === files.length) {
-          setFormData(prev => ({ ...prev, images: [...prev.images, ...newImages] }));
-          setUploading(false);
-        }
-      };
-      reader.onerror = () => {
-        loadedCount++;
-        if (loadedCount === files.length) {
-          setUploading(false);
-        }
-      };
+      reader.onload = () => resolve({
+        dataUrl: reader.result,
+        name: file.name,
+        type: file.type,
+        size: file.size,
+      });
+      reader.onerror = () => reject(reader.error);
       reader.readAsDataURL(file);
     });
+
+    Promise.allSettled(validFiles.map(readFile))
+      .then((results) => {
+        const newImages = results
+          .filter((result) => result.status === 'fulfilled')
+          .map((result) => result.value);
+        const failedCount = results.length - newImages.length;
+        if (failedCount > 0) alert(`${failedCount} 张图片读取失败，请重新选择`);
+        if (newImages.length > 0) {
+          setFormData((previous) => ({
+            ...previous,
+            images: [...previous.images, ...newImages],
+          }));
+        }
+      })
+      .finally(() => setUploading(false));
 
     // 清空input以便重复选择同一张图片
     e.target.value = '';
@@ -75,7 +93,7 @@ export default function ProblemForm({ category, problem, onBack, onSaved }) {
   }
 
   // 提交表单
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     if (!formData.title.trim()) {
@@ -88,19 +106,38 @@ export default function ProblemForm({ category, problem, onBack, onSaved }) {
       return;
     }
 
-    const problemData = {
-      id: problem?.id || null,
-      title: formData.title.trim(),
-      content: formData.content.trim(),
-      solution: formData.solution.trim(),
-      images: formData.images,
-      updatedAt: Date.now(),
-    };
+    setSaving(true);
+    try {
+      const { storedImages, createdIds } = await persistProblemImages(formData.images);
+      const problemData = {
+        id: problem?.id || null,
+        title: formData.title.trim(),
+        content: formData.content.trim(),
+        solution: formData.solution.trim(),
+        images: storedImages,
+        updatedAt: Date.now(),
+      };
 
-    if (saveProblem(category.id, problemData)) {
+      if (!saveProblem(category.id, problemData)) {
+        await deleteImages(createdIds);
+        alert('保存失败，可能是设备存储空间不足。请先导出备份或删除部分内容。');
+        return;
+      }
+
+      const retainedIds = new Set(getStoredImageIds(storedImages));
+      const removedIds = getStoredImageIds(problem?.images)
+        .filter((id) => !retainedIds.has(id));
+      try {
+        await deleteImages(removedIds);
+      } catch (cleanupError) {
+        console.warn('清理已删除图片失败:', cleanupError);
+      }
       onSaved();
-    } else {
-      alert('保存失败，请重试');
+    } catch (error) {
+      console.error('保存图片失败:', error);
+      alert('图片保存失败，可能是设备存储空间不足。');
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -163,9 +200,9 @@ export default function ProblemForm({ category, problem, onBack, onSaved }) {
           {formData.images.length > 0 && (
             <div className="grid grid-cols-3 gap-2 mb-3">
               {formData.images.map((img, index) => (
-                <div key={index} className="relative animate-scaleIn">
-                  <img
-                    src={img}
+                <div key={`${img?.id || img?.name || 'legacy'}-${index}`} className="relative animate-scaleIn">
+                  <StoredImage
+                    image={img}
                     alt={`图片${index + 1}`}
                     className="w-full h-24 object-cover rounded-xl"
                   />
@@ -220,8 +257,13 @@ export default function ProblemForm({ category, problem, onBack, onSaved }) {
 
         {/* 提交按钮 */}
         <div className="fixed bottom-[calc(80px+env(safe-area-inset-bottom,0px))] left-4 right-4 z-40 pt-2">
-          <Button type="submit" className="w-full shadow-lg" size="large">
-            保存
+          <Button
+            type="submit"
+            className="w-full shadow-lg"
+            size="large"
+            disabled={uploading || saving}
+          >
+            {saving ? '保存中…' : '保存'}
           </Button>
         </div>
       </form>

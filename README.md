@@ -10,7 +10,7 @@
 - **预算支出**：设置总预算，分类记录多笔支出并查看余额。
 - **施工进度**：维护施工阶段、日期和每日任务。
 - **离线 PWA**：可添加到 iPhone 主屏幕，首次加载后可离线使用。
-- **备份与恢复**：支持导出 JSON 备份，也可从文件或粘贴内容中恢复。
+- **备份与恢复**：支持导出包含图片的 JSON 备份，也可从文件或粘贴内容中恢复；导入前自动创建可回滚快照。
 
 ## iPhone 安装
 
@@ -35,6 +35,7 @@ npm run dev
 npm run build    # 构建生产文件到 dist/
 npm run preview  # 本地预览生产构建
 npm run lint     # 执行 ESLint 检查
+npm test         # 运行 Vitest 自动化测试
 ```
 
 ## 项目结构
@@ -43,15 +44,15 @@ npm run lint     # 执行 ESLint 检查
 renovation-app/
 ├── src/components/   React 功能与 UI 组件
 ├── src/data/         静态分类数据
-├── src/utils/        本地存储和格式化工具
+├── src/utils/        本地存储、图片数据库和格式化工具
 ├── public/           PWA 图标、备份页和静态文件
 └── vite.config.js    Vite 与离线缓存配置
 ```
 
 ## 数据与隐私
 
-装修记录存储在 `localStorage` 中，应用不会将记录上传到服务器。可通过底部“数据”入口或 [`/rescue.html`](https://decorationass.netlify.app/rescue.html) 导出备份。卸载 PWA 或清除 Safari 网站数据可能删除本地记录，请定期将备份保存到“文件” App 或其他安全位置。
+结构化装修记录存储在 `localStorage` 中，图片存储在 IndexedDB 中，应用不会将记录上传到服务器。可通过底部“数据”入口或 [`/rescue.html`](https://decorationass.netlify.app/rescue.html) 导出完整备份。卸载 PWA 或清除 Safari 网站数据可能删除本地记录，请定期将备份保存到“文件” App 或其他安全位置。
 
 ## 部署
 
-`main` 分支推送到 GitHub 后由 Netlify 自动构建和发布。生产构建命令为 `npm run build`，输出目录为 `renovation-app/dist/`。
+`main` 分支推送到 GitHub 后由 Netlify 自动构建和发布。仓库根目录的 `netlify.toml` 固定了构建目录、命令和 Node.js 版本，输出目录为 `renovation-app/dist/`。
