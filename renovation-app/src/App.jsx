@@ -8,7 +8,7 @@ import SchedulePage from './components/SchedulePage';
 
 // App 主组件 - 装修助手
 export default function App() {
-  // 当前活动模块：'technology' | 'budget' | 'schedule'
+  // 当前活动模块：'technology' | 'budget' | 'schedule' | 'data'
   const [activeTab, setActiveTab] = useState('technology');
 
   // 施工工艺模块状态
@@ -97,6 +97,16 @@ export default function App() {
       {/* 进度计划模块 */}
       {activeTab === 'schedule' && (
         <SchedulePage />
+      )}
+
+      {/* 数据备份与恢复模块 */}
+      {activeTab === 'data' && (
+        <iframe
+          className="data-page-frame"
+          src="/rescue.html?embedded=1"
+          title="数据备份与恢复"
+          allow="clipboard-write; web-share"
+        />
       )}
 
       {/* 底部导航栏 */}

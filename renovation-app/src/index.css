@@ -34,6 +34,19 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
 
+.data-page-frame {
+  position: fixed;
+  top: env(safe-area-inset-top, 0);
+  right: 0;
+  bottom: 64px;
+  left: 0;
+  width: 100%;
+  height: calc(100vh - env(safe-area-inset-top, 0px) - 64px);
+  height: calc(100dvh - env(safe-area-inset-top, 0px) - 64px);
+  border: 0;
+  background: #f4f7fb;
+}
+
 /* ========== 输入框样式 ========== */
 input, textarea, select {
   font-family: inherit;

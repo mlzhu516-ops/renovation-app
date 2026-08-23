@@ -6,6 +6,11 @@
     <meta name="robots" content="noindex, nofollow" />
     <meta name="theme-color" content="#f4f7fb" />
     <title>装修助手 · 数据抢救</title>
+    <script>
+      if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+        document.documentElement.classList.add('embedded')
+      }
+    </script>
     <style>
       :root {
         color: #172033;
@@ -115,6 +120,7 @@
       .file-picker { color: #2457a6; background: #eaf1ff; }
       .app-link { margin-top: 10px; color: #fff; background: #16865b; }
       .app-link[hidden] { display: none; }
+      .embedded .app-link { display: none; }
 
       .import-info {
         margin: 12px 0;
