@@ -7,7 +7,9 @@
     <meta name="theme-color" content="#f4f7fb" />
     <title>装修助手 · 数据抢救</title>
     <script>
-      if (new URLSearchParams(window.location.search).get('embedded') === '1') {
+      const isEmbedded = window.location.hash === '#embedded'
+        || new URLSearchParams(window.location.search).get('embedded') === '1'
+      if (isEmbedded) {
         document.documentElement.classList.add('embedded')
       }
     </script>

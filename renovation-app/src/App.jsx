@@ -103,7 +103,7 @@ export default function App() {
       {activeTab === 'data' && (
         <iframe
           className="data-page-frame"
-          src="/rescue.html?embedded=1"
+          src="/rescue.html#embedded"
           title="数据备份与恢复"
           allow="clipboard-write; web-share"
         />

@@ -56,7 +56,9 @@ export default defineConfig({
       workbox: {
         cleanupOutdatedCaches: true,
         globPatterns: ['**/*.{css,html,js,png,svg,txt}'],
+        ignoreURLParametersMatching: [/^utm_/, /^fbclid$/, /^embedded$/],
         navigateFallback: '/index.html',
+        navigateFallbackDenylist: [/^\/rescue\.html$/],
       },
     }),
     writeVerificationFile(),
