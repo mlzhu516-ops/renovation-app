@@ -87,7 +87,47 @@
       }
 
       button.secondary { color: #2457a6; background: #eaf1ff; }
+      button.danger { background: #c93c3c; }
       button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      input[type="file"] {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        clip: rect(0 0 0 0);
+        white-space: nowrap;
+      }
+
+      .file-picker,
+      .app-link {
+        display: flex;
+        min-height: 48px;
+        align-items: center;
+        justify-content: center;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font-weight: 650;
+        text-decoration: none;
+        cursor: pointer;
+      }
+
+      .file-picker { color: #2457a6; background: #eaf1ff; }
+      .app-link { margin-top: 10px; color: #fff; background: #16865b; }
+      .app-link[hidden] { display: none; }
+
+      .import-info {
+        margin: 12px 0;
+        padding: 12px;
+        border-radius: 10px;
+        color: #667085;
+        background: #f5f7fa;
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-line;
+      }
+
+      .warning { margin-bottom: 12px; color: #9a5b13; font-size: 14px; }
 
       #message {
         min-height: 24px;
@@ -124,7 +164,7 @@
   <body>
     <main>
       <h1>装修助手数据抢救</h1>
-      <p class="subtitle">请在保存过数据的原手机、原微信内打开本页面。</p>
+      <p class="subtitle">在原微信中导出备份，也可在新浏览器中导入恢复。</p>
 
       <section class="card privacy">
         <strong>数据不会上传</strong>
@@ -151,6 +191,21 @@
         </details>
       </section>
 
+      <section class="card">
+        <h2>在新浏览器中恢复</h2>
+        <p class="warning">导入会替换当前浏览器中的三类装修数据。若这里已有新数据，请先在上方导出备份。</p>
+        <label class="file-picker" for="importFile">选择 JSON 备份文件</label>
+        <input id="importFile" type="file" accept=".json,application/json" />
+        <details>
+          <summary>无法选择文件？粘贴备份内容</summary>
+          <textarea id="importText" placeholder="粘贴完整的 JSON 备份内容"></textarea>
+          <button id="validateTextButton" class="secondary">校验粘贴内容</button>
+        </details>
+        <div id="importInfo" class="import-info">尚未选择备份文件。</div>
+        <button id="importButton" class="danger" disabled>导入并覆盖当前数据</button>
+        <a id="openApp" class="app-link" href="/" hidden>打开装修助手</a>
+      </section>
+
       <section class="card tips">
         <h2>建议操作顺序</h2>
         <ol>
@@ -171,6 +226,11 @@
       const results = document.getElementById('results')
       const preview = document.getElementById('preview')
       const message = document.getElementById('message')
+      const importFile = document.getElementById('importFile')
+      const importText = document.getElementById('importText')
+      const importInfo = document.getElementById('importInfo')
+      const importButton = document.getElementById('importButton')
+      const openApp = document.getElementById('openApp')
       const actionButtons = [
         document.getElementById('shareButton'),
         document.getElementById('downloadButton'),
@@ -178,6 +238,7 @@
       ]
 
       let backupText = ''
+      let pendingImport = null
 
       function describeData(key, rawValue) {
         if (rawValue === null) return '当前微信中未找到'
@@ -298,10 +359,126 @@
         }
       }
 
+      function validateBackup(value) {
+        if (!value || value.format !== 'renovation-assistant-backup' || value.version !== 1) {
+          throw new Error('不是装修助手生成的有效备份文件。')
+        }
+        if (!value.storage || typeof value.storage !== 'object') {
+          throw new Error('备份文件缺少存储数据。')
+        }
+
+        let foundCount = 0
+        const storage = {}
+        const summaries = []
+
+        storageItems.forEach((item) => {
+          const rawValue = value.storage[item.key]
+          if (rawValue !== null && typeof rawValue !== 'string') {
+            throw new Error(`${item.label}的数据格式无效。`)
+          }
+          if (typeof rawValue === 'string') {
+            JSON.parse(rawValue)
+            foundCount += 1
+          }
+          storage[item.key] = rawValue
+          summaries.push(`${item.label}：${describeData(item.key, rawValue)}`)
+        })
+
+        if (foundCount === 0) throw new Error('备份文件中没有可恢复的装修数据。')
+
+        return {
+          exportedAt: value.exportedAt,
+          foundCount,
+          storage,
+          summaries,
+        }
+      }
+
+      async function handleImportFile(event) {
+        pendingImport = null
+        importButton.disabled = true
+        openApp.hidden = true
+        const file = event.target.files[0]
+        if (!file) {
+          importInfo.textContent = '尚未选择备份文件。'
+          return
+        }
+        if (file.size > 10 * 1024 * 1024) {
+          importInfo.textContent = '文件超过 10MB，请确认选择了正确的 JSON 备份。'
+          return
+        }
+
+        try {
+          const parsed = JSON.parse(await file.text())
+          prepareImport(parsed, `文件：${file.name}`)
+        } catch (error) {
+          importInfo.textContent = `无法导入：${error.message}`
+        }
+      }
+
+      function prepareImport(parsed, sourceLabel) {
+        pendingImport = validateBackup(parsed)
+        const time = pendingImport.exportedAt
+          ? new Date(pendingImport.exportedAt).toLocaleString('zh-CN')
+          : '未知时间'
+        importInfo.textContent = [
+          sourceLabel,
+          `备份时间：${time}`,
+          ...pendingImport.summaries,
+        ].join('\n')
+        importButton.disabled = false
+        openApp.hidden = true
+      }
+
+      function handleImportText() {
+        pendingImport = null
+        importButton.disabled = true
+        openApp.hidden = true
+        try {
+          prepareImport(JSON.parse(importText.value), '来源：粘贴的备份内容')
+        } catch (error) {
+          importInfo.textContent = `无法导入：${error.message}`
+        }
+      }
+
+      function importBackup() {
+        if (!pendingImport) return
+        const confirmed = window.confirm(
+          `即将用备份中的 ${pendingImport.foundCount} 类数据覆盖当前浏览器。是否继续？`,
+        )
+        if (!confirmed) return
+
+        try {
+          const rollback = {
+            createdAt: new Date().toISOString(),
+            storage: Object.fromEntries(
+              storageItems.map((item) => [item.key, localStorage.getItem(item.key)]),
+            ),
+          }
+          localStorage.setItem('renovation_import_rollback', JSON.stringify(rollback))
+
+          storageItems.forEach((item) => {
+            const rawValue = pendingImport.storage[item.key]
+            if (rawValue === null) localStorage.removeItem(item.key)
+            else localStorage.setItem(item.key, rawValue)
+          })
+
+          readAndRender()
+          importInfo.textContent += '\n\n导入成功。导入前的数据已保存在本浏览器的回滚快照中。'
+          importButton.disabled = true
+          openApp.hidden = false
+        } catch (error) {
+          importInfo.textContent += `\n\n导入失败：${error.message}`
+        }
+      }
+
       document.getElementById('shareButton').addEventListener('click', shareBackup)
       document.getElementById('downloadButton').addEventListener('click', downloadBackup)
       document.getElementById('copyButton').addEventListener('click', copyBackup)
       document.getElementById('refreshButton').addEventListener('click', readAndRender)
+      importFile.addEventListener('change', handleImportFile)
+      document.getElementById('validateTextButton').addEventListener('click', handleImportText)
+      importButton.addEventListener('click', importBackup)
 
       readAndRender()
     </script>
