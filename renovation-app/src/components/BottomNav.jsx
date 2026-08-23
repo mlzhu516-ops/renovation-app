@@ -30,6 +30,16 @@ export default function BottomNav({ activeTab, onTabChange }) {
         </svg>
       )
     },
+    {
+      id: 'data',
+      name: '数据',
+      href: '/rescue.html',
+      icon: (
+        <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 16.5v-9m0 0L8.25 11.25M12 7.5l3.75 3.75M6.75 19.5h10.5A2.25 2.25 0 0019.5 17.25V6.75a2.25 2.25 0 00-2.25-2.25H6.75A2.25 2.25 0 004.5 6.75v10.5a2.25 2.25 0 002.25 2.25z" />
+        </svg>
+      )
+    },
   ];
 
   return (
@@ -40,10 +50,12 @@ export default function BottomNav({ activeTab, onTabChange }) {
       <div className="flex">
         {tabs.map((tab) => {
           const isActive = activeTab === tab.id;
+          const TabElement = tab.href ? 'a' : 'button';
           return (
-            <button
+            <TabElement
               key={tab.id}
-              onClick={() => onTabChange(tab.id)}
+              href={tab.href}
+              onClick={tab.href ? undefined : () => onTabChange(tab.id)}
               className={`
                 relative flex-1 py-2.5 pb-5 flex flex-col items-center justify-center gap-0.5
                 transition-all duration-200
@@ -70,7 +82,7 @@ export default function BottomNav({ activeTab, onTabChange }) {
               {isActive && (
                 <div className="absolute bottom-1 w-1 h-1 bg-black rounded-full" />
               )}
-            </button>
+            </TabElement>
           );
         })}
       </div>
