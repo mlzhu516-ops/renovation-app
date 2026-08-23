@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="theme-color" content="#f4f7fb" />
+    <title>装修助手 · 数据抢救</title>
+    <style>
+      :root {
+        color: #172033;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        background: #f4f7fb;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        padding: max(24px, env(safe-area-inset-top)) 16px max(32px, env(safe-area-inset-bottom));
+      }
+
+      main { max-width: 640px; margin: 0 auto; }
+
+      h1 { margin: 4px 0 8px; font-size: 28px; }
+      h2 { margin: 0 0 12px; font-size: 18px; }
+      p { margin: 0; line-height: 1.6; }
+
+      .subtitle { color: #667085; margin-bottom: 20px; }
+
+      .card {
+        margin-bottom: 16px;
+        padding: 18px;
+        border: 1px solid #e4e8ef;
+        border-radius: 16px;
+        background: #fff;
+        box-shadow: 0 8px 24px rgba(26, 39, 67, 0.06);
+      }
+
+      .privacy {
+        border-color: #c7dcff;
+        color: #214a83;
+        background: #edf5ff;
+      }
+
+      .item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 13px 0;
+        border-bottom: 1px solid #edf0f4;
+      }
+
+      .item:last-child { border-bottom: 0; }
+      .item-name { font-weight: 650; }
+      .item-detail { margin-top: 4px; color: #7a8496; font-size: 13px; }
+
+      .badge {
+        flex: 0 0 auto;
+        padding: 5px 9px;
+        border-radius: 999px;
+        font-size: 13px;
+        color: #996000;
+        background: #fff3cf;
+      }
+
+      .badge.found { color: #087443; background: #dff8eb; }
+
+      .actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+
+      button {
+        min-height: 48px;
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 14px;
+        font: inherit;
+        font-weight: 650;
+        color: #fff;
+        background: #2869e8;
+        cursor: pointer;
+      }
+
+      button.secondary { color: #2457a6; background: #eaf1ff; }
+      button:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      #message {
+        min-height: 24px;
+        margin-top: 12px;
+        color: #2457a6;
+        text-align: center;
+        font-size: 14px;
+      }
+
+      details { margin-top: 14px; }
+      summary { color: #667085; cursor: pointer; }
+
+      textarea {
+        width: 100%;
+        height: 180px;
+        margin-top: 12px;
+        padding: 12px;
+        resize: vertical;
+        border: 1px solid #d8dee8;
+        border-radius: 10px;
+        font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+        color: #344054;
+        background: #f8fafc;
+      }
+
+      .tips { color: #667085; font-size: 14px; }
+      .tips ol { margin: 8px 0 0; padding-left: 22px; line-height: 1.8; }
+
+      @media (max-width: 420px) {
+        .actions { grid-template-columns: 1fr; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>装修助手数据抢救</h1>
+      <p class="subtitle">请在保存过数据的原手机、原微信内打开本页面。</p>
+
+      <section class="card privacy">
+        <strong>数据不会上传</strong>
+        <p>本页面只读取当前浏览器中的装修助手数据，并在设备本地生成备份文件。</p>
+      </section>
+
+      <section class="card">
+        <h2>数据检测结果</h2>
+        <div id="results"></div>
+      </section>
+
+      <section class="card">
+        <h2>立即备份</h2>
+        <div class="actions">
+          <button id="shareButton">分享或存到“文件”</button>
+          <button id="downloadButton">下载 JSON 备份</button>
+          <button id="copyButton" class="secondary">复制备份内容</button>
+          <button id="refreshButton" class="secondary">重新检测</button>
+        </div>
+        <div id="message" role="status" aria-live="polite"></div>
+        <details>
+          <summary>查看备份内容</summary>
+          <textarea id="preview" readonly></textarea>
+        </details>
+      </section>
+
+      <section class="card tips">
+        <h2>建议操作顺序</h2>
+        <ol>
+          <li>优先点击“分享或存到文件”，保存到 iPhone“文件”App。</li>
+          <li>再点击“复制备份内容”，粘贴到备忘录作为第二份备份。</li>
+          <li>确认备份存在后，再使用其他浏览器或设备。</li>
+        </ol>
+      </section>
+    </main>
+
+    <script>
+      const storageItems = [
+        { key: 'renovation_problems', label: '施工工艺问题' },
+        { key: 'renovation_budget', label: '预算与支出' },
+        { key: 'renovation_schedule', label: '进度计划' },
+      ]
+
+      const results = document.getElementById('results')
+      const preview = document.getElementById('preview')
+      const message = document.getElementById('message')
+      const actionButtons = [
+        document.getElementById('shareButton'),
+        document.getElementById('downloadButton'),
+        document.getElementById('copyButton'),
+      ]
+
+      let backupText = ''
+
+      function describeData(key, rawValue) {
+        if (rawValue === null) return '当前微信中未找到'
+
+        try {
+          const value = JSON.parse(rawValue)
+          if (key === 'renovation_problems') {
+            const count = Object.values(value).reduce((sum, items) => sum + (Array.isArray(items) ? items.length : 0), 0)
+            return `${count} 条问题记录 · ${new Blob([rawValue]).size} 字节`
+          }
+          if (key === 'renovation_budget') {
+            const categories = Array.isArray(value.categories) ? value.categories : []
+            const count = categories.reduce((sum, category) => sum + (Array.isArray(category.items) ? category.items.length : 0), 0)
+            return `${categories.length} 个分类 · ${count} 笔支出`
+          }
+          if (key === 'renovation_schedule') {
+            const phases = Array.isArray(value.phases) ? value.phases.length : 0
+            const tasks = Object.values(value.tasks || {}).reduce((sum, items) => sum + (Array.isArray(items) ? items.length : 0), 0)
+            return `${phases} 个阶段 · ${tasks} 项任务`
+          }
+        } catch (error) {
+          return `已找到原始数据 · ${new Blob([rawValue]).size} 字节`
+        }
+
+        return `已找到 · ${new Blob([rawValue]).size} 字节`
+      }
+
+      function readAndRender() {
+        const storage = {}
+        let foundCount = 0
+        results.textContent = ''
+
+        storageItems.forEach((item) => {
+          const rawValue = localStorage.getItem(item.key)
+          storage[item.key] = rawValue
+          if (rawValue !== null) foundCount += 1
+
+          const row = document.createElement('div')
+          row.className = 'item'
+
+          const text = document.createElement('div')
+          const name = document.createElement('div')
+          const detail = document.createElement('div')
+          name.className = 'item-name'
+          detail.className = 'item-detail'
+          name.textContent = item.label
+          detail.textContent = describeData(item.key, rawValue)
+          text.append(name, detail)
+
+          const badge = document.createElement('span')
+          badge.className = rawValue === null ? 'badge' : 'badge found'
+          badge.textContent = rawValue === null ? '未找到' : '已找到'
+          row.append(text, badge)
+          results.append(row)
+        })
+
+        const backup = {
+          format: 'renovation-assistant-backup',
+          version: 1,
+          exportedAt: new Date().toISOString(),
+          sourceOrigin: location.origin,
+          storage,
+        }
+
+        backupText = JSON.stringify(backup, null, 2)
+        preview.value = backupText
+        actionButtons.forEach((button) => { button.disabled = foundCount === 0 })
+        message.textContent = foundCount === 0
+          ? '未找到装修数据。请确认使用的是原手机、原微信和原域名。'
+          : `已检测到 ${foundCount}/3 类数据，请立即保存至少两份备份。`
+      }
+
+      function backupFilename() {
+        const time = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+        return `装修助手备份-${time}.json`
+      }
+
+      async function shareBackup() {
+        const file = new File([backupText], backupFilename(), { type: 'application/json' })
+        try {
+          if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({ title: '装修助手数据备份', files: [file] })
+            message.textContent = '分享面板已打开，请选择“存储到文件”或其他安全位置。'
+            return
+          }
+          message.textContent = '当前微信不支持文件分享，请使用“下载”或“复制备份内容”。'
+        } catch (error) {
+          if (error.name !== 'AbortError') message.textContent = '分享失败，请改用下载或复制功能。'
+        }
+      }
+
+      function downloadBackup() {
+        const url = URL.createObjectURL(new Blob([backupText], { type: 'application/json;charset=utf-8' }))
+        const link = document.createElement('a')
+        link.href = url
+        link.download = backupFilename()
+        document.body.append(link)
+        link.click()
+        link.remove()
+        setTimeout(() => URL.revokeObjectURL(url), 2000)
+        message.textContent = '已请求下载；若微信没有响应，请使用分享或复制功能。'
+      }
+
+      async function copyBackup() {
+        try {
+          if (navigator.clipboard && window.isSecureContext) {
+            await navigator.clipboard.writeText(backupText)
+          } else {
+            preview.focus()
+            preview.select()
+            document.execCommand('copy')
+          }
+          message.textContent = '备份内容已复制，请立即粘贴到备忘录保存。'
+        } catch (error) {
+          preview.focus()
+          preview.select()
+          message.textContent = '自动复制失败，已选中内容，请长按选择“复制”。'
+        }
+      }
+
+      document.getElementById('shareButton').addEventListener('click', shareBackup)
+      document.getElementById('downloadButton').addEventListener('click', downloadBackup)
+      document.getElementById('copyButton').addEventListener('click', copyBackup)
+      document.getElementById('refreshButton').addEventListener('click', readAndRender)
+
+      readAndRender()
+    </script>
+  </body>
+</html>
